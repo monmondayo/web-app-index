@@ -103,12 +103,54 @@ http://localhost:4321 で開く。
 
 ```bash
 npm run build
-npx wrangler deploy
+npx wrangler pages deploy
 ```
 
-`wrangler.toml` に `pages_build_output_dir = "dist"` が設定されているため、`npx wrangler deploy` だけでPages にデプロイされます。
+`wrangler.toml` の `pages_build_output_dir = "dist"` により、出力ディレクトリの指定は不要です。
 
-本番環境の環境変数は Cloudflare Dashboard または `wrangler secret put` で設定する。
+### 本番環境の初期設定
+
+初回デプロイ後、以下の設定が必要です。
+
+#### 1. シークレット環境変数
+
+```bash
+npx wrangler pages secret put GITHUB_CLIENT_ID
+npx wrangler pages secret put GITHUB_CLIENT_SECRET
+npx wrangler pages secret put JWT_SECRET
+```
+
+#### 2. SITE_URL の設定
+
+Cloudflare Dashboard → Pages → `web-app-index` → Settings → Environment variables で:
+
+- `SITE_URL` = `https://web-app-index.pages.dev`（本番のURL）
+
+#### 3. D1・R2 バインディング
+
+Dashboard → Pages → `web-app-index` → Settings → Functions → Bindings で:
+
+| 種類 | 変数名 | リソース |
+|------|--------|----------|
+| D1 database | `DB` | `web-app-index-db` |
+| R2 bucket | `R2` | `web-app-index-thumbnails` |
+
+#### 4. 本番 D1 にスキーマ・データ投入
+
+```bash
+npx wrangler d1 execute web-app-index-db --remote --file=schema.sql
+npx wrangler d1 execute web-app-index-db --remote --file=seed.sql
+```
+
+`--remote` を付けることで本番の D1 に対して実行されます。
+
+#### 5. GitHub OAuth の callback URL 追加
+
+GitHub の OAuth App 設定で本番用の callback URL を追加:
+
+- `https://web-app-index.pages.dev/api/auth/callback`
+
+設定完了後、再デプロイしてください。
 
 ## プロジェクト構成
 

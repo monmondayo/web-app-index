@@ -21,6 +21,6 @@
   "devDependencies": {
     "tailwindcss": "^3.4.0",
     "typescript": "^5.7.0",
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.64.0"
   }
 }
