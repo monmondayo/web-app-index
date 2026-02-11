@@ -1,0 +1,140 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import TechBadge from '../../components/TechBadge.astro';
+import { getAppById } from '../../lib/db';
+import { getCurrentUser } from '../../lib/auth';
+
+const env = Astro.locals.runtime.env;
+const user = await getCurrentUser(Astro.request, env.JWT_SECRET);
+const id = Number(Astro.params.id);
+
+const app = await getAppById(env.DB, id);
+if (!app) {
+  return Astro.redirect('/');
+}
+
+function getThumbnailUrl() {
+  if (app!.thumbnail_url) return app!.thumbnail_url;
+  if (app!.site_url) return `https://image.thum.io/get/${app!.site_url}`;
+  return '';
+}
+
+const thumbnailUrl = getThumbnailUrl();
+---
+<Layout title={`${app.title} - Web App Catalog`}>
+  <Header user={user} />
+
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <a href="/" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+      一覧に戻る
+    </a>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {thumbnailUrl && (
+        <div class="aspect-video bg-gray-100 overflow-hidden">
+          <img src={thumbnailUrl} alt={app.title} class="w-full h-full object-cover" />
+        </div>
+      )}
+      <div class="p-6 sm:p-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">{app.title}</h1>
+        {app.description && (
+          <p class="text-gray-600 text-lg mb-6">{app.description}</p>
+        )}
+
+        <div class="flex flex-wrap gap-2 mb-6">
+          {app.tech_stacks.map((tech) => (
+            <TechBadge name={tech.name} slug={tech.slug} category={tech.category} color={tech.color} size="md" />
+          ))}
+        </div>
+
+        <div class="flex items-center gap-4">
+          {app.site_url && (
+            <a
+              href={app.site_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              サイトを開く
+            </a>
+          )}
+          {app.github_url && (
+            <a
+              href={app.github_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              GitHubリポジトリ
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Tech popover (shared) -->
+  <div id="tech-popover" class="fixed z-50 hidden pointer-events-none">
+    <div class="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg max-w-xs pointer-events-auto">
+      <div id="tech-popover-name" class="font-semibold mb-0.5"></div>
+      <div id="tech-popover-desc" class="text-gray-300 leading-relaxed"></div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Tech badge popover
+  const popover = document.getElementById('tech-popover')!;
+  const popoverName = document.getElementById('tech-popover-name')!;
+  const popoverDesc = document.getElementById('tech-popover-desc')!;
+
+  function showPopover(badge: HTMLElement) {
+    const name = badge.dataset.techName || '';
+    const desc = badge.dataset.techDesc || '';
+    if (!desc) return;
+
+    popoverName.textContent = name;
+    popoverDesc.textContent = desc;
+    popover.classList.remove('hidden');
+
+    const rect = badge.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+
+    let top = rect.bottom + 6;
+    let left = rect.left + rect.width / 2 - popoverRect.width / 2;
+
+    if (left < 8) left = 8;
+    if (left + popoverRect.width > window.innerWidth - 8) {
+      left = window.innerWidth - popoverRect.width - 8;
+    }
+    if (top + popoverRect.height > window.innerHeight - 8) {
+      top = rect.top - popoverRect.height - 6;
+    }
+
+    popover.style.top = `${top}px`;
+    popover.style.left = `${left}px`;
+  }
+
+  function hidePopover() {
+    popover.classList.add('hidden');
+  }
+
+  document.addEventListener('click', (e) => {
+    const badge = (e.target as HTMLElement).closest('.tech-badge') as HTMLElement | null;
+    if (badge) {
+      e.stopPropagation();
+      const isVisible = !popover.classList.contains('hidden');
+      const currentName = popoverName.textContent;
+      hidePopover();
+      if (!isVisible || currentName !== badge.dataset.techName) {
+        showPopover(badge);
+      }
+    } else if (!(e.target as HTMLElement).closest('#tech-popover')) {
+      hidePopover();
+    }
+  });
+</script>

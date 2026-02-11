@@ -1,0 +1,176 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import AppCard from '../components/AppCard.astro';
+import { getApps } from '../lib/db';
+import { getCurrentUser } from '../lib/auth';
+import { CATEGORY_LABELS, CATEGORY_DOT_COLORS } from '../lib/icons';
+
+const env = Astro.locals.runtime.env;
+const user = await getCurrentUser(Astro.request, env.JWT_SECRET);
+
+let apps = [];
+try {
+  apps = await getApps(env.DB);
+} catch (e) {
+  // DB not initialized yet - show empty state
+}
+
+const categories = Object.entries(CATEGORY_LABELS);
+---
+<Layout title="Web App Catalog">
+  <Header user={user} />
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">マイアプリ一覧</h1>
+        <p class="text-gray-600 mt-1">自作Webアプリのカタログ</p>
+      </div>
+      {user && (
+        <button
+          id="add-app-btn"
+          class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          アプリを追加
+        </button>
+      )}
+    </div>
+
+    {apps.length > 0 && (
+      <div class="flex flex-wrap gap-x-4 gap-y-1 mb-6 text-xs text-gray-500">
+        {categories.map(([key, label]) => (
+          <span class="inline-flex items-center gap-1.5">
+            <span class:list={['w-2.5 h-2.5 rounded-full', CATEGORY_DOT_COLORS[key]]} />
+            {label}
+          </span>
+        ))}
+      </div>
+    )}
+
+    {apps.length > 0 ? (
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {apps.map((app) => <AppCard app={app} />)}
+      </div>
+    ) : (
+      <div class="text-center py-20">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 mb-4">
+          <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+        </div>
+        <h2 class="text-xl font-semibold text-gray-900 mb-2">アプリがまだありません</h2>
+        <p class="text-gray-600 mb-6">
+          {user
+            ? '「アプリを追加」ボタンから最初のアプリを登録しましょう'
+            : 'GitHubでログインしてアプリを登録しましょう'
+          }
+        </p>
+        {!user && (
+          <a
+            href="/api/auth/login"
+            class="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            GitHubでログイン
+          </a>
+        )}
+      </div>
+    )}
+  </main>
+
+  <!-- Tech popover (shared) -->
+  <div id="tech-popover" class="fixed z-50 hidden pointer-events-none">
+    <div class="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg max-w-xs pointer-events-auto">
+      <div id="tech-popover-name" class="font-semibold mb-0.5"></div>
+      <div id="tech-popover-desc" class="text-gray-300 leading-relaxed"></div>
+    </div>
+  </div>
+
+  {user && (
+    <div id="dialog-root"></div>
+  )}
+</Layout>
+
+<script>
+  // Tech badge popover
+  const popover = document.getElementById('tech-popover')!;
+  const popoverName = document.getElementById('tech-popover-name')!;
+  const popoverDesc = document.getElementById('tech-popover-desc')!;
+
+  function showPopover(badge: HTMLElement) {
+    const name = badge.dataset.techName || '';
+    const desc = badge.dataset.techDesc || '';
+    if (!desc) return;
+
+    popoverName.textContent = name;
+    popoverDesc.textContent = desc;
+    popover.classList.remove('hidden');
+
+    const rect = badge.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+
+    let top = rect.bottom + 6;
+    let left = rect.left + rect.width / 2 - popoverRect.width / 2;
+
+    // Keep within viewport
+    if (left < 8) left = 8;
+    if (left + popoverRect.width > window.innerWidth - 8) {
+      left = window.innerWidth - popoverRect.width - 8;
+    }
+    if (top + popoverRect.height > window.innerHeight - 8) {
+      top = rect.top - popoverRect.height - 6;
+    }
+
+    popover.style.top = `${top}px`;
+    popover.style.left = `${left}px`;
+  }
+
+  function hidePopover() {
+    popover.classList.add('hidden');
+  }
+
+  document.addEventListener('click', (e) => {
+    const badge = (e.target as HTMLElement).closest('.tech-badge') as HTMLElement | null;
+    if (badge) {
+      e.stopPropagation();
+      const isVisible = !popover.classList.contains('hidden');
+      const currentName = popoverName.textContent;
+      hidePopover();
+      if (!isVisible || currentName !== badge.dataset.techName) {
+        showPopover(badge);
+      }
+    } else if (!(e.target as HTMLElement).closest('#tech-popover')) {
+      hidePopover();
+    }
+  });
+</script>
+
+{user && (
+  <script>
+    import { render, h } from 'preact';
+    import AddAppDialog from '../components/AddAppDialog';
+
+    const btn = document.getElementById('add-app-btn');
+    const root = document.getElementById('dialog-root');
+    let isOpen = false;
+
+    function renderDialog(open: boolean) {
+      isOpen = open;
+      if (root) {
+        render(
+          h(AddAppDialog, {
+            isOpen: open,
+            onClose: () => renderDialog(false),
+            onSaved: () => { renderDialog(false); location.reload(); },
+          }),
+          root
+        );
+      }
+    }
+
+    btn?.addEventListener('click', () => renderDialog(true));
+  </script>
+)}

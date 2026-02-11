@@ -1,0 +1,26 @@
+{
+  "name": "web-app-index",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "wrangler pages dev dist",
+    "astro": "astro",
+    "db:init": "wrangler d1 execute web-app-index-db --local --file=schema.sql",
+    "db:seed": "wrangler d1 execute web-app-index-db --local --file=seed.sql"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^12.0.0",
+    "@astrojs/preact": "^4.0.0",
+    "@astrojs/tailwind": "^6.0.0",
+    "astro": "^5.0.0",
+    "preact": "^10.25.0",
+    "simple-icons": "^13.0.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.7.0",
+    "wrangler": "^3.0.0"
+  }
+}

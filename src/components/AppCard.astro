@@ -1,0 +1,100 @@
+---
+import TechBadge from './TechBadge.astro';
+import type { AppWithTech } from '../lib/db';
+
+interface Props {
+  app: AppWithTech;
+}
+
+const { app } = Astro.props;
+
+// Generate thumbnail URL
+function getThumbnailUrl(app: AppWithTech): string {
+  if (app.thumbnail_url) return app.thumbnail_url;
+  if (app.site_url) return `https://image.thum.io/get/${app.site_url}`;
+  return '';
+}
+
+const thumbnailUrl = getThumbnailUrl(app);
+const visibleCount = 5;
+const hasOverflow = app.tech_stacks.length > visibleCount;
+const overflowCount = app.tech_stacks.length - visibleCount;
+---
+<article class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group">
+  {thumbnailUrl ? (
+    <div class="aspect-video bg-gray-100 overflow-hidden">
+      <img
+        src={thumbnailUrl}
+        alt={app.title}
+        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        loading="lazy"
+      />
+    </div>
+  ) : (
+    <div class="aspect-video bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+      <span class="text-4xl font-bold text-indigo-300">{app.title.charAt(0)}</span>
+    </div>
+  )}
+  <div class="p-4">
+    <h3 class="text-lg font-semibold text-gray-900 mb-1 truncate">{app.title}</h3>
+    {app.description && (
+      <p class="text-sm text-gray-600 mb-3 line-clamp-2">{app.description}</p>
+    )}
+    <div class="flex flex-wrap gap-1.5 mb-3 tech-stack-container">
+      {app.tech_stacks.map((tech, i) => (
+        <span class:list={[{ 'hidden tech-overflow': hasOverflow && i >= visibleCount }]}>
+          <TechBadge name={tech.name} slug={tech.slug} category={tech.category} color={tech.color} />
+        </span>
+      ))}
+      {hasOverflow && (
+        <button
+          type="button"
+          class="inline-flex items-center text-xs text-gray-500 px-2 py-0.5 hover:text-gray-700 transition-colors tech-expand-btn"
+          data-overflow-count={overflowCount}
+        >
+          +{overflowCount}
+        </button>
+      )}
+    </div>
+    <div class="flex items-center gap-3 text-sm">
+      {app.site_url && (
+        <a
+          href={app.site_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-indigo-600 hover:text-indigo-800 transition-colors"
+        >
+          サイト
+        </a>
+      )}
+      {app.github_url && (
+        <a
+          href={app.github_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          GitHub
+        </a>
+      )}
+    </div>
+  </div>
+</article>
+
+<script>
+  document.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('.tech-expand-btn') as HTMLButtonElement | null;
+    if (!btn) return;
+    const container = btn.closest('.tech-stack-container');
+    if (!container) return;
+    const overflowItems = container.querySelectorAll('.tech-overflow');
+    const isExpanded = btn.getAttribute('data-expanded') === 'true';
+    overflowItems.forEach((el) => el.classList.toggle('hidden', isExpanded));
+    btn.setAttribute('data-expanded', isExpanded ? 'false' : 'true');
+    if (isExpanded) {
+      btn.textContent = `+${btn.dataset.overflowCount}`;
+    } else {
+      btn.textContent = '折りたたむ';
+    }
+  });
+</script>
