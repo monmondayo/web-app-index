@@ -115,10 +115,10 @@ function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
   return { owner: match[1], repo: match[2].replace(/\.git$/, '') };
 }
 
-async function fetchGitHubFile(owner: string, repo: string, path: string): Promise<string | null> {
+async function fetchGitHubFile(owner: string, repo: string, path: string, authHeaders?: Record<string, string>): Promise<string | null> {
   try {
     const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
-      headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'web-app-index' },
+      headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'web-app-index', ...authHeaders },
     });
     if (!res.ok) return null;
     const data = await res.json() as GitHubFile;
@@ -131,14 +131,20 @@ async function fetchGitHubFile(owner: string, repo: string, path: string): Promi
   }
 }
 
-export async function detectTechFromGitHub(githubUrl: string): Promise<DetectedTech[]> {
+export async function detectTechFromGitHub(githubUrl: string, githubCredentials?: { clientId: string; clientSecret: string }): Promise<DetectedTech[]> {
   const parsed = parseGitHubUrl(githubUrl);
   if (!parsed) return [];
+
+  const authHeaders: Record<string, string> = {};
+  if (githubCredentials) {
+    const encoded = btoa(`${githubCredentials.clientId}:${githubCredentials.clientSecret}`);
+    authHeaders['Authorization'] = `Basic ${encoded}`;
+  }
 
   const detected = new Map<string, string>(); // name -> role
 
   // Try package.json
-  const packageJson = await fetchGitHubFile(parsed.owner, parsed.repo, 'package.json');
+  const packageJson = await fetchGitHubFile(parsed.owner, parsed.repo, 'package.json', authHeaders);
   if (packageJson) {
     try {
       const pkg = JSON.parse(packageJson);
@@ -161,7 +167,7 @@ export async function detectTechFromGitHub(githubUrl: string): Promise<DetectedT
   }
 
   // Try requirements.txt (Python)
-  const requirements = await fetchGitHubFile(parsed.owner, parsed.repo, 'requirements.txt');
+  const requirements = await fetchGitHubFile(parsed.owner, parsed.repo, 'requirements.txt', authHeaders);
   if (requirements) {
     detected.set('Python', FILE_BASED_TECH['Python'].role);
     if (requirements.includes('fastapi')) detected.set('FastAPI', FILE_BASED_TECH['FastAPI'].role);
@@ -170,15 +176,15 @@ export async function detectTechFromGitHub(githubUrl: string): Promise<DetectedT
   }
 
   // Try go.mod
-  const goMod = await fetchGitHubFile(parsed.owner, parsed.repo, 'go.mod');
+  const goMod = await fetchGitHubFile(parsed.owner, parsed.repo, 'go.mod', authHeaders);
   if (goMod) detected.set('Go', FILE_BASED_TECH['Go'].role);
 
   // Try Cargo.toml
-  const cargoToml = await fetchGitHubFile(parsed.owner, parsed.repo, 'Cargo.toml');
+  const cargoToml = await fetchGitHubFile(parsed.owner, parsed.repo, 'Cargo.toml', authHeaders);
   if (cargoToml) detected.set('Rust', FILE_BASED_TECH['Rust'].role);
 
   // Try README.md
-  const readme = await fetchGitHubFile(parsed.owner, parsed.repo, 'README.md');
+  const readme = await fetchGitHubFile(parsed.owner, parsed.repo, 'README.md', authHeaders);
   if (readme) {
     const lower = readme.toLowerCase();
     for (const [tech, keywords] of Object.entries(README_KEYWORDS)) {
@@ -191,11 +197,11 @@ export async function detectTechFromGitHub(githubUrl: string): Promise<DetectedT
   }
 
   // Check for Dockerfile
-  const dockerfile = await fetchGitHubFile(parsed.owner, parsed.repo, 'Dockerfile');
+  const dockerfile = await fetchGitHubFile(parsed.owner, parsed.repo, 'Dockerfile', authHeaders);
   if (dockerfile) detected.set('Docker', FILE_BASED_TECH['Docker'].role);
 
   // Check for wrangler.toml (Cloudflare)
-  const wrangler = await fetchGitHubFile(parsed.owner, parsed.repo, 'wrangler.toml');
+  const wrangler = await fetchGitHubFile(parsed.owner, parsed.repo, 'wrangler.toml', authHeaders);
   if (wrangler) detected.set('Cloudflare', FILE_BASED_TECH['Cloudflare'].role);
 
   return Array.from(detected.entries()).map(([name, role]) => ({ name, role }));

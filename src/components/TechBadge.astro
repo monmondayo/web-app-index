@@ -24,6 +24,6 @@ const description = TECH_DESCRIPTIONS[name] || '';
   data-tech-desc={description}
   data-tech-role={usageRole || ''}
 >
-  <img src={iconUrl} alt="" class={iconSize} loading="lazy" />
+  <img src={iconUrl} alt="" class={iconSize} loading="lazy" onerror={`this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/${slug}.svg'`} />
   {name}
 </button>

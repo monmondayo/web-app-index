@@ -7,6 +7,7 @@ async function mergeUsageRoles(
   db: import('@cloudflare/workers-types').D1Database,
   githubUrl: string | undefined,
   techEntries: Array<{ id: number; usage_role?: string }> | undefined,
+  githubCredentials?: { clientId: string; clientSecret: string },
 ): Promise<Array<{ id: number; usage_role?: string }> | undefined> {
   if (!techEntries?.length || !githubUrl) return techEntries;
 
@@ -14,7 +15,7 @@ async function mergeUsageRoles(
   const needsRole = techEntries.some((e) => !e.usage_role);
   if (!needsRole) return techEntries;
 
-  const detected = await detectTechFromGitHub(githubUrl);
+  const detected = await detectTechFromGitHub(githubUrl, githubCredentials);
   if (!detected.length) return techEntries;
 
   const allTech = await getTechStacks(db);
@@ -49,7 +50,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   const data = await request.json();
-  const techEntries = await mergeUsageRoles(env.DB, data.github_url, data.tech_entries);
+  const ghCreds = { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET };
+  const techEntries = await mergeUsageRoles(env.DB, data.github_url, data.tech_entries, ghCreds);
   const appId = await createApp(env.DB, {
     user_id: user.userId,
     title: data.title,
@@ -80,7 +82,8 @@ export const PUT: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: 'Missing app id' }), { status: 400 });
   }
 
-  const techEntries = await mergeUsageRoles(env.DB, data.github_url, data.tech_entries);
+  const ghCreds = { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET };
+  const techEntries = await mergeUsageRoles(env.DB, data.github_url, data.tech_entries, ghCreds);
   await updateApp(env.DB, data.id, {
     title: data.title,
     description: data.description,
