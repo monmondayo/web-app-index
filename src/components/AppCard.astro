@@ -4,9 +4,10 @@ import type { AppWithTech } from '../lib/db';
 
 interface Props {
   app: AppWithTech;
+  admin?: boolean;
 }
 
-const { app } = Astro.props;
+const { app, admin } = Astro.props;
 
 // Generate thumbnail URL
 function getThumbnailUrl(app: AppWithTech): string {
@@ -19,8 +20,54 @@ const thumbnailUrl = getThumbnailUrl(app);
 const visibleCount = 5;
 const hasOverflow = app.tech_stacks.length > visibleCount;
 const overflowCount = app.tech_stacks.length - visibleCount;
+
+// Serialize app data for edit button
+const editData = admin ? JSON.stringify({
+  id: app.id,
+  title: app.title || '',
+  description: app.description || '',
+  site_url: app.site_url || '',
+  github_url: app.github_url || '',
+  thumbnail_url: app.thumbnail_url || '',
+  tech_ids: app.tech_stacks.map(t => t.id),
+}) : '';
 ---
-<article class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group">
+<article class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group relative" data-app-id={app.id}>
+  {admin && (
+    <div class="edit-mode-ui absolute top-2 left-2 z-10 hidden">
+      <button
+        type="button"
+        class="drag-handle w-8 h-8 flex items-center justify-center bg-white/90 backdrop-blur rounded-lg shadow text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+        title="ドラッグで並び替え"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
+        </svg>
+      </button>
+    </div>
+    <div class="edit-mode-ui absolute top-2 right-2 z-10 flex gap-1 hidden">
+      <button
+        type="button"
+        class="edit-btn w-8 h-8 flex items-center justify-center bg-white/90 backdrop-blur rounded-lg shadow text-blue-500 hover:text-blue-700"
+        data-edit-app={editData}
+        title="編集"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="delete-btn w-8 h-8 flex items-center justify-center bg-white/90 backdrop-blur rounded-lg shadow text-red-500 hover:text-red-700"
+        data-delete-app-id={app.id}
+        title="削除"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      </button>
+    </div>
+  )}
   {thumbnailUrl ? (
     <div class="aspect-video bg-gray-100 overflow-hidden">
       <img

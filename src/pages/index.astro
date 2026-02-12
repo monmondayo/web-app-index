@@ -29,15 +29,26 @@ const categories = Object.entries(CATEGORY_LABELS);
         <p class="text-gray-600 mt-1">自作Webアプリのカタログ</p>
       </div>
       {admin && (
-        <button
-          id="add-app-btn"
-          class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          アプリを追加
-        </button>
+        <div class="flex items-center gap-3">
+          <button
+            id="edit-mode-btn"
+            class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            編集
+          </button>
+          <button
+            id="add-app-btn"
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            アプリを追加
+          </button>
+        </div>
       )}
     </div>
 
@@ -53,8 +64,8 @@ const categories = Object.entries(CATEGORY_LABELS);
     )}
 
     {apps.length > 0 ? (
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {apps.map((app) => <AppCard app={app} />)}
+      <div id="app-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {apps.map((app) => <AppCard app={app} admin={admin} />)}
       </div>
     ) : (
       <div class="text-center py-20">
@@ -150,6 +161,127 @@ const categories = Object.entries(CATEGORY_LABELS);
   });
 </script>
 
+{admin && (
+  <script>
+    // Edit mode toggle
+    const editModeBtn = document.getElementById('edit-mode-btn');
+    let editMode = false;
+
+    editModeBtn?.addEventListener('click', () => {
+      editMode = !editMode;
+      document.body.classList.toggle('edit-mode', editMode);
+
+      // Show/hide edit UI elements
+      document.querySelectorAll('.edit-mode-ui').forEach((el) => {
+        el.classList.toggle('hidden', !editMode);
+      });
+
+      // Update button style
+      if (editMode) {
+        editModeBtn.classList.remove('border-gray-300', 'text-gray-700', 'bg-white', 'hover:bg-gray-50');
+        editModeBtn.classList.add('border-indigo-500', 'text-indigo-700', 'bg-indigo-50', 'hover:bg-indigo-100');
+      } else {
+        editModeBtn.classList.remove('border-indigo-500', 'text-indigo-700', 'bg-indigo-50', 'hover:bg-indigo-100');
+        editModeBtn.classList.add('border-gray-300', 'text-gray-700', 'bg-white', 'hover:bg-gray-50');
+      }
+    });
+
+    // Delete handler
+    document.addEventListener('click', async (e) => {
+      const deleteBtn = (e.target as HTMLElement).closest('.delete-btn') as HTMLElement | null;
+      if (!deleteBtn) return;
+      const appId = deleteBtn.dataset.deleteAppId;
+      if (!appId) return;
+      if (!confirm('本当に削除しますか？')) return;
+
+      try {
+        const res = await fetch(`/api/apps?id=${appId}`, { method: 'DELETE' });
+        if (res.ok) {
+          location.reload();
+        } else {
+          alert('削除に失敗しました');
+        }
+      } catch {
+        alert('削除に失敗しました');
+      }
+    });
+
+    // Drag & Drop
+    const grid = document.getElementById('app-grid');
+    let draggedCard: HTMLElement | null = null;
+
+    grid?.addEventListener('mousedown', (e) => {
+      const handle = (e.target as HTMLElement).closest('.drag-handle');
+      if (!handle || !editMode) return;
+      const card = handle.closest('article') as HTMLElement;
+      if (card) card.draggable = true;
+    });
+
+    grid?.addEventListener('dragstart', (e) => {
+      const card = (e.target as HTMLElement).closest('article') as HTMLElement;
+      if (!card || !editMode) return;
+      draggedCard = card;
+      card.style.opacity = '0.5';
+      e.dataTransfer!.effectAllowed = 'move';
+    });
+
+    grid?.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!draggedCard || !editMode) return;
+      e.dataTransfer!.dropEffect = 'move';
+
+      const target = (e.target as HTMLElement).closest('article') as HTMLElement;
+      if (!target || target === draggedCard) return;
+
+      const cards = Array.from(grid!.querySelectorAll('article'));
+      const draggedIdx = cards.indexOf(draggedCard);
+      const targetIdx = cards.indexOf(target);
+
+      if (draggedIdx < targetIdx) {
+        target.after(draggedCard);
+      } else {
+        target.before(draggedCard);
+      }
+    });
+
+    grid?.addEventListener('dragend', async (e) => {
+      const card = (e.target as HTMLElement).closest('article') as HTMLElement;
+      if (card) {
+        card.style.opacity = '';
+        card.draggable = false;
+      }
+
+      if (!draggedCard || !grid) {
+        draggedCard = null;
+        return;
+      }
+
+      // Collect new order and send to API
+      const cards = Array.from(grid.querySelectorAll('article'));
+      const orders = cards.map((c, i) => ({
+        id: Number((c as HTMLElement).dataset.appId),
+        display_order: i,
+      }));
+
+      draggedCard = null;
+
+      try {
+        await fetch('/api/apps/reorder', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orders }),
+        });
+      } catch {
+        // Silently fail - order will be correct on next page load from server
+      }
+    });
+
+    grid?.addEventListener('drop', (e) => {
+      e.preventDefault();
+    });
+  </script>
+)}
+
 {user && (
   <script>
     import { render, h } from 'preact';
@@ -159,7 +291,17 @@ const categories = Object.entries(CATEGORY_LABELS);
     const root = document.getElementById('dialog-root');
     let isOpen = false;
 
-    function renderDialog(open: boolean) {
+    interface EditAppData {
+      id: number;
+      title: string;
+      description: string;
+      site_url: string;
+      github_url: string;
+      thumbnail_url: string;
+      tech_ids: number[];
+    }
+
+    function renderDialog(open: boolean, editApp?: EditAppData) {
       isOpen = open;
       if (root) {
         render(
@@ -167,6 +309,7 @@ const categories = Object.entries(CATEGORY_LABELS);
             isOpen: open,
             onClose: () => renderDialog(false),
             onSaved: () => { renderDialog(false); location.reload(); },
+            ...(editApp ? { editApp } : {}),
           }),
           root
         );
@@ -174,5 +317,19 @@ const categories = Object.entries(CATEGORY_LABELS);
     }
 
     btn?.addEventListener('click', () => renderDialog(true));
+
+    // Edit button handler
+    document.addEventListener('click', (e) => {
+      const editBtn = (e.target as HTMLElement).closest('.edit-btn') as HTMLElement | null;
+      if (!editBtn) return;
+      const data = editBtn.dataset.editApp;
+      if (!data) return;
+      try {
+        const editApp = JSON.parse(data) as EditAppData;
+        renderDialog(true, editApp);
+      } catch {
+        // Invalid data
+      }
+    });
   </script>
 )}

@@ -9,6 +9,7 @@ export interface App {
   github_url: string | null;
   thumbnail_url: string | null;
   thumbnail_type: string;
+  display_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -36,7 +37,7 @@ export interface User {
 
 export async function getApps(db: D1Database): Promise<AppWithTech[]> {
   const apps = await db.prepare(
-    'SELECT * FROM apps ORDER BY updated_at DESC'
+    'SELECT * FROM apps ORDER BY display_order ASC, updated_at DESC'
   ).all<App>();
 
   if (!apps.results.length) return [];
@@ -79,12 +80,15 @@ export async function createApp(
   db: D1Database,
   data: { user_id: number; title: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> }
 ): Promise<number> {
+  const maxOrder = await db.prepare('SELECT COALESCE(MAX(display_order), 0) as max_order FROM apps').first<{ max_order: number }>();
+  const nextOrder = (maxOrder?.max_order ?? 0) + 1;
+
   const result = await db.prepare(
-    `INSERT INTO apps (user_id, title, description, site_url, github_url, thumbnail_url, thumbnail_type)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO apps (user_id, title, description, site_url, github_url, thumbnail_url, thumbnail_type, display_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     data.user_id, data.title, data.description || null, data.site_url || null,
-    data.github_url || null, data.thumbnail_url || null, data.thumbnail_type || 'auto'
+    data.github_url || null, data.thumbnail_url || null, data.thumbnail_type || 'auto', nextOrder
   ).run();
 
   const appId = result.meta.last_row_id as number;
