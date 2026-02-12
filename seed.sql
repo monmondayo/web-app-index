@@ -5,12 +5,12 @@ INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Svelte'
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Astro', 'astro', 'frontend', 'BC52EE');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Angular', 'angular', 'frontend', '0F0F11');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Next.js', 'nextdotjs', 'frontend', '000000');
-INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Nuxt.js', 'nuxtdotjs', 'frontend', '00DC82');
+INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Nuxt.js', 'nuxt', 'frontend', '00DC82');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('SvelteKit', 'svelte', 'frontend', 'FF3E00');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Preact', 'preact', 'frontend', '673AB8');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Solid', 'solid', 'frontend', '2C4F7C');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('HTML5', 'html5', 'frontend', 'E34F26');
-INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('CSS3', 'css3', 'frontend', '1572B6');
+INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('CSS3', 'css', 'frontend', '1572B6');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Tailwind CSS', 'tailwindcss', 'frontend', '06B6D4');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Bootstrap', 'bootstrap', 'frontend', '7952B3');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('TypeScript', 'typescript', 'frontend', '3178C6');
@@ -58,7 +58,7 @@ INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Nginx',
 
 -- Library
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Three.js', 'threedotjs', 'library', '000000');
-INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('D3.js', 'd3dotjs', 'library', 'F9A03C');
+INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('D3.js', 'd3', 'library', 'F9A03C');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Leaflet', 'leaflet', 'library', '199900');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('MapLibre', 'maplibre', 'library', '396CB2');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('OpenLayers', 'openlayers', 'library', '1F6B75');

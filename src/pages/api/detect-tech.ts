@@ -15,7 +15,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: 'Missing github_url' }), { status: 400 });
   }
 
-  const detectedTech = await detectTechFromGitHub(github_url);
+  const detectedTech = await detectTechFromGitHub(github_url, {
+    clientId: env.GITHUB_CLIENT_ID,
+    clientSecret: env.GITHUB_CLIENT_SECRET,
+  });
   const allTech = await getTechStacks(env.DB);
 
   // Match detected names to tech_stacks entries, preserving role

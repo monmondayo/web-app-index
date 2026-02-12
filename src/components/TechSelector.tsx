@@ -107,6 +107,7 @@ export default function TechSelector({ selected, onChange, techStacks }: Props) 
               alt=""
               class="w-4 h-4"
               loading="lazy"
+              onError={(e) => { const img = e.currentTarget; img.onerror = null; img.src = `https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/${tech.slug}.svg`; }}
             />
             <span class="text-sm text-gray-900">{tech.name}</span>
             <span class={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${CATEGORY_BADGE[tech.category] || ''}`}>
@@ -133,6 +134,7 @@ export default function TechSelector({ selected, onChange, techStacks }: Props) 
                   src={`https://cdn.simpleicons.org/${tech.slug}/${tech.color || '000000'}`}
                   alt=""
                   class="w-3 h-3"
+                  onError={(e) => { const img = e.currentTarget; img.onerror = null; img.src = `https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/${tech.slug}.svg`; }}
                 />
                 {tech.name}
                 <button
