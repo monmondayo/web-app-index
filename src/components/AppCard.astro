@@ -17,9 +17,6 @@ function getThumbnailUrl(app: AppWithTech): string {
 }
 
 const thumbnailUrl = getThumbnailUrl(app);
-const visibleCount = 5;
-const hasOverflow = app.tech_stacks.length > visibleCount;
-const overflowCount = app.tech_stacks.length - visibleCount;
 
 // Serialize app data for edit button
 const editData = admin ? JSON.stringify({
@@ -87,21 +84,10 @@ const editData = admin ? JSON.stringify({
     {app.description && (
       <p class="text-sm text-gray-600 mb-3 line-clamp-2">{app.description}</p>
     )}
-    <div class="flex flex-wrap gap-1.5 mb-3 tech-stack-container">
-      {app.tech_stacks.map((tech, i) => (
-        <span class:list={[{ 'hidden tech-overflow': hasOverflow && i >= visibleCount }]}>
-          <TechBadge name={tech.name} slug={tech.slug} category={tech.category} color={tech.color} usageRole={tech.usage_role} />
-        </span>
+    <div class="flex flex-wrap gap-1.5 mb-3">
+      {app.tech_stacks.map((tech) => (
+        <TechBadge name={tech.name} slug={tech.slug} category={tech.category} color={tech.color} usageRole={tech.usage_role} />
       ))}
-      {hasOverflow && (
-        <button
-          type="button"
-          class="inline-flex items-center text-xs text-gray-500 px-2 py-0.5 hover:text-gray-700 transition-colors tech-expand-btn"
-          data-overflow-count={overflowCount}
-        >
-          +{overflowCount}
-        </button>
-      )}
     </div>
     <div class="flex items-center gap-3 text-sm">
       {app.site_url && (
@@ -127,21 +113,3 @@ const editData = admin ? JSON.stringify({
     </div>
   </div>
 </article>
-
-<script>
-  document.addEventListener('click', (e) => {
-    const btn = (e.target as HTMLElement).closest('.tech-expand-btn') as HTMLButtonElement | null;
-    if (!btn) return;
-    const container = btn.closest('.tech-stack-container');
-    if (!container) return;
-    const overflowItems = container.querySelectorAll('.tech-overflow');
-    const isExpanded = btn.getAttribute('data-expanded') === 'true';
-    overflowItems.forEach((el) => el.classList.toggle('hidden', isExpanded));
-    btn.setAttribute('data-expanded', isExpanded ? 'false' : 'true');
-    if (isExpanded) {
-      btn.textContent = `+${btn.dataset.overflowCount}`;
-    } else {
-      btn.textContent = '折りたたむ';
-    }
-  });
-</script>
