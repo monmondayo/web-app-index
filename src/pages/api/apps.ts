@@ -1,6 +1,37 @@
 import type { APIRoute } from 'astro';
-import { getApps, createApp, updateApp, deleteApp } from '../../lib/db';
+import { getApps, createApp, updateApp, deleteApp, getTechStacks } from '../../lib/db';
 import { getCurrentUser, isAdmin } from '../../lib/auth';
+import { detectTechFromGitHub } from '../../lib/tech-detector';
+
+async function mergeUsageRoles(
+  db: import('@cloudflare/workers-types').D1Database,
+  githubUrl: string | undefined,
+  techEntries: Array<{ id: number; usage_role?: string }> | undefined,
+): Promise<Array<{ id: number; usage_role?: string }> | undefined> {
+  if (!techEntries?.length || !githubUrl) return techEntries;
+
+  // Only detect if some entries are missing usage_role
+  const needsRole = techEntries.some((e) => !e.usage_role);
+  if (!needsRole) return techEntries;
+
+  const detected = await detectTechFromGitHub(githubUrl);
+  if (!detected.length) return techEntries;
+
+  const allTech = await getTechStacks(db);
+  // Build map: tech_stack id -> detected role
+  const roleMap = new Map<number, string>();
+  for (const dt of detected) {
+    const ts = allTech.find((t) => t.name.toLowerCase() === dt.name.toLowerCase());
+    if (ts && dt.role) {
+      roleMap.set(ts.id, dt.role);
+    }
+  }
+
+  return techEntries.map((e) => ({
+    ...e,
+    usage_role: e.usage_role || roleMap.get(e.id) || undefined,
+  }));
+}
 
 export const GET: APIRoute = async ({ locals }) => {
   const env = locals.runtime.env;
@@ -18,6 +49,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   const data = await request.json();
+  const techEntries = await mergeUsageRoles(env.DB, data.github_url, data.tech_entries);
   const appId = await createApp(env.DB, {
     user_id: user.userId,
     title: data.title,
@@ -26,8 +58,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     github_url: data.github_url,
     thumbnail_url: data.thumbnail_url,
     thumbnail_type: data.thumbnail_type,
-    tech_ids: data.tech_ids,
-    tech_entries: data.tech_entries,
+    tech_ids: techEntries ? undefined : data.tech_ids,
+    tech_entries: techEntries || data.tech_entries,
   });
 
   return new Response(JSON.stringify({ id: appId }), {
@@ -48,6 +80,7 @@ export const PUT: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: 'Missing app id' }), { status: 400 });
   }
 
+  const techEntries = await mergeUsageRoles(env.DB, data.github_url, data.tech_entries);
   await updateApp(env.DB, data.id, {
     title: data.title,
     description: data.description,
@@ -55,8 +88,8 @@ export const PUT: APIRoute = async ({ request, locals }) => {
     github_url: data.github_url,
     thumbnail_url: data.thumbnail_url,
     thumbnail_type: data.thumbnail_type,
-    tech_ids: data.tech_ids,
-    tech_entries: data.tech_entries,
+    tech_ids: techEntries ? undefined : data.tech_ids,
+    tech_entries: techEntries || data.tech_entries,
   });
 
   return new Response(JSON.stringify({ ok: true }), {
