@@ -18,6 +18,7 @@
 - GitHub OAuth ログイン
 - アプリの CRUD (追加・編集・削除)
 - GitHub URL から技術スタックを自動検出 (package.json, requirements.txt, go.mod, Cargo.toml, README.md, Dockerfile)
+- 登録・更新時に技術スタックの利用用途 (usage_role) を自動付与
 - サムネイル自動取得 (thum.io) または手動アップロード (R2)
 - 技術スタックのカテゴリ別フィルター・検索付きセレクター
 - レスポンシブ 3 列グリッドレイアウト
@@ -172,8 +173,9 @@ src/
 ├── pages/
 │   ├── index.astro        # カタログ一覧
 │   ├── app/[id].astro     # アプリ詳細
+│   ├── r2/[...path].ts   # R2 画像配信プロキシ
 │   └── api/
-│       ├── apps.ts        # CRUD API
+│       ├── apps.ts        # CRUD API (登録時 usage_role 自動検出)
 │       ├── tech.ts        # 技術一覧
 │       ├── detect-tech.ts # 技術自動検出
 │       ├── upload.ts      # サムネイルアップロード → R2
