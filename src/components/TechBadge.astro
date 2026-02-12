@@ -7,9 +7,10 @@ interface Props {
   category: string;
   color: string | null;
   size?: 'sm' | 'md';
+  usageRole?: string | null;
 }
 
-const { name, slug, category, color, size = 'sm' } = Astro.props;
+const { name, slug, category, color, size = 'sm', usageRole } = Astro.props;
 const iconUrl = getTechIconSvg(slug, color);
 const categoryClass = CATEGORY_COLORS[category] || CATEGORY_COLORS.other;
 const sizeClass = size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1';
@@ -21,6 +22,7 @@ const description = TECH_DESCRIPTIONS[name] || '';
   class:list={['inline-flex items-center gap-1 rounded-full font-medium cursor-pointer hover:opacity-80 transition-opacity tech-badge', categoryClass, sizeClass]}
   data-tech-name={name}
   data-tech-desc={description}
+  data-tech-role={usageRole || ''}
 >
   <img src={iconUrl} alt="" class={iconSize} loading="lazy" />
   {name}

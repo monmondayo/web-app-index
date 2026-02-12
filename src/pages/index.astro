@@ -3,11 +3,12 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import AppCard from '../components/AppCard.astro';
 import { getApps } from '../lib/db';
-import { getCurrentUser } from '../lib/auth';
+import { getCurrentUser, isAdmin } from '../lib/auth';
 import { CATEGORY_LABELS, CATEGORY_DOT_COLORS } from '../lib/icons';
 
 const env = Astro.locals.runtime.env;
 const user = await getCurrentUser(Astro.request, env.JWT_SECRET);
+const admin = isAdmin(user, env.ADMIN_GITHUB_USERNAME);
 
 let apps = [];
 try {
@@ -27,7 +28,7 @@ const categories = Object.entries(CATEGORY_LABELS);
         <h1 class="text-2xl font-bold text-gray-900">マイアプリ一覧</h1>
         <p class="text-gray-600 mt-1">自作Webアプリのカタログ</p>
       </div>
-      {user && (
+      {admin && (
         <button
           id="add-app-btn"
           class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
@@ -64,19 +65,11 @@ const categories = Object.entries(CATEGORY_LABELS);
         </div>
         <h2 class="text-xl font-semibold text-gray-900 mb-2">アプリがまだありません</h2>
         <p class="text-gray-600 mb-6">
-          {user
+          {admin
             ? '「アプリを追加」ボタンから最初のアプリを登録しましょう'
-            : 'GitHubでログインしてアプリを登録しましょう'
+            : 'まだアプリが登録されていません'
           }
         </p>
-        {!user && (
-          <a
-            href="/api/auth/login"
-            class="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white font-medium rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            GitHubでログイン
-          </a>
-        )}
       </div>
     )}
   </main>
@@ -85,6 +78,7 @@ const categories = Object.entries(CATEGORY_LABELS);
   <div id="tech-popover" class="fixed z-50 hidden pointer-events-none">
     <div class="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg max-w-xs pointer-events-auto">
       <div id="tech-popover-name" class="font-semibold mb-0.5"></div>
+      <div id="tech-popover-role" class="text-yellow-300 mb-0.5 hidden"></div>
       <div id="tech-popover-desc" class="text-gray-300 leading-relaxed"></div>
     </div>
   </div>
@@ -98,14 +92,22 @@ const categories = Object.entries(CATEGORY_LABELS);
   // Tech badge popover
   const popover = document.getElementById('tech-popover')!;
   const popoverName = document.getElementById('tech-popover-name')!;
+  const popoverRole = document.getElementById('tech-popover-role')!;
   const popoverDesc = document.getElementById('tech-popover-desc')!;
 
   function showPopover(badge: HTMLElement) {
     const name = badge.dataset.techName || '';
     const desc = badge.dataset.techDesc || '';
-    if (!desc) return;
+    const role = badge.dataset.techRole || '';
+    if (!desc && !role) return;
 
     popoverName.textContent = name;
+    if (role) {
+      popoverRole.textContent = role;
+      popoverRole.classList.remove('hidden');
+    } else {
+      popoverRole.classList.add('hidden');
+    }
     popoverDesc.textContent = desc;
     popover.classList.remove('hidden');
 

@@ -13,3 +13,4 @@ bucket_name = "web-app-index-thumbnails"
 
 [vars]
 SITE_URL = "https://web-app-index.pages.dev"
+ADMIN_GITHUB_USERNAME = "testdummy"

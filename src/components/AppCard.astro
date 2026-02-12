@@ -43,7 +43,7 @@ const overflowCount = app.tech_stacks.length - visibleCount;
     <div class="flex flex-wrap gap-1.5 mb-3 tech-stack-container">
       {app.tech_stacks.map((tech, i) => (
         <span class:list={[{ 'hidden tech-overflow': hasOverflow && i >= visibleCount }]}>
-          <TechBadge name={tech.name} slug={tech.slug} category={tech.category} color={tech.color} />
+          <TechBadge name={tech.name} slug={tech.slug} category={tech.category} color={tech.color} usageRole={tech.usage_role} />
         </span>
       ))}
       {hasOverflow && (

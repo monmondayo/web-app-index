@@ -10,6 +10,7 @@ type Runtime = import('@astrojs/cloudflare').Runtime<{
   GITHUB_CLIENT_SECRET: string;
   JWT_SECRET: string;
   SITE_URL: string;
+  ADMIN_GITHUB_USERNAME: string;
 }>;
 
 declare namespace App {

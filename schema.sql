@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS tech_stacks (
 CREATE TABLE IF NOT EXISTS app_tech (
   app_id INTEGER NOT NULL,
   tech_id INTEGER NOT NULL,
+  usage_role TEXT,
   PRIMARY KEY (app_id, tech_id),
   FOREIGN KEY (app_id) REFERENCES apps(id) ON DELETE CASCADE,
   FOREIGN KEY (tech_id) REFERENCES tech_stacks(id)

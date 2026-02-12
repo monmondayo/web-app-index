@@ -9,6 +9,11 @@ interface TechStack {
   color: string | null;
 }
 
+interface TechEntry {
+  id: number;
+  usage_role?: string;
+}
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -30,7 +35,9 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
   const [siteUrl, setSiteUrl] = useState(editApp?.site_url || '');
   const [githubUrl, setGithubUrl] = useState(editApp?.github_url || '');
   const [thumbnailUrl, setThumbnailUrl] = useState(editApp?.thumbnail_url || '');
-  const [selectedTech, setSelectedTech] = useState<number[]>(editApp?.tech_ids || []);
+  const [selectedTech, setSelectedTech] = useState<TechEntry[]>(
+    editApp?.tech_ids?.map((id) => ({ id })) || []
+  );
   const [techStacks, setTechStacks] = useState<TechStack[]>([]);
   const [loading, setLoading] = useState(false);
   const [detecting, setDetecting] = useState(false);
@@ -48,6 +55,15 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
   // Auto-generate thumbnail preview from site URL
   const previewThumbnail = thumbnailUrl || (siteUrl ? `https://image.thum.io/get/${siteUrl}` : '');
 
+  const selectedIds = selectedTech.map((t) => t.id);
+
+  function handleTechChange(ids: number[]) {
+    setSelectedTech((prev) => {
+      const existing = new Map(prev.map((e) => [e.id, e]));
+      return ids.map((id) => existing.get(id) || { id });
+    });
+  }
+
   async function handleDetectTech() {
     if (!githubUrl) return;
     setDetecting(true);
@@ -57,10 +73,17 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ github_url: githubUrl }),
       });
-      const data = await res.json() as { detected: TechStack[] };
+      const data = await res.json() as { detected: (TechStack & { usage_role?: string })[] };
       if (data.detected?.length) {
-        const newIds = data.detected.map((t) => t.id);
-        setSelectedTech((prev) => [...new Set([...prev, ...newIds])]);
+        setSelectedTech((prev) => {
+          const existing = new Map(prev.map((e) => [e.id, e]));
+          for (const t of data.detected) {
+            if (!existing.has(t.id)) {
+              existing.set(t.id, { id: t.id, usage_role: t.usage_role });
+            }
+          }
+          return Array.from(existing.values());
+        });
       }
     } catch {
       // silently ignore
@@ -106,7 +129,7 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
         github_url: githubUrl.trim(),
         thumbnail_url: thumbnailUrl.trim(),
         thumbnail_type: thumbnailUrl ? 'manual' : 'auto',
-        tech_ids: selectedTech,
+        tech_entries: selectedTech,
       };
 
       const res = await fetch('/api/apps', {
@@ -229,8 +252,8 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">技術スタック</label>
             <TechSelector
-              selected={selectedTech}
-              onChange={setSelectedTech}
+              selected={selectedIds}
+              onChange={handleTechChange}
               techStacks={techStacks}
             />
           </div>

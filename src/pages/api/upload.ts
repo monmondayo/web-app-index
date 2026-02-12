@@ -1,11 +1,11 @@
 import type { APIRoute } from 'astro';
-import { getCurrentUser } from '../../lib/auth';
+import { getCurrentUser, isAdmin } from '../../lib/auth';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
   const user = await getCurrentUser(request, env.JWT_SECRET);
-  if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  if (!isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
   const formData = await request.formData();

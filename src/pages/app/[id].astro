@@ -21,6 +21,15 @@ function getThumbnailUrl() {
 }
 
 const thumbnailUrl = getThumbnailUrl();
+
+const hasRoles = app.tech_stacks.some((t) => t.usage_role);
+const roleGroups: Record<string, typeof app.tech_stacks> = {};
+if (hasRoles) {
+  for (const tech of app.tech_stacks) {
+    const role = tech.usage_role || 'その他';
+    (roleGroups[role] = roleGroups[role] || []).push(tech);
+  }
+}
 ---
 <Layout title={`${app.title} - Web App Catalog`}>
   <Header user={user} />
@@ -47,9 +56,27 @@ const thumbnailUrl = getThumbnailUrl();
 
         <div class="flex flex-wrap gap-2 mb-6">
           {app.tech_stacks.map((tech) => (
-            <TechBadge name={tech.name} slug={tech.slug} category={tech.category} color={tech.color} size="md" />
+            <TechBadge name={tech.name} slug={tech.slug} category={tech.category} color={tech.color} size="md" usageRole={tech.usage_role} />
           ))}
         </div>
+
+        {hasRoles && (
+          <details class="mb-6">
+            <summary class="text-sm text-gray-500 cursor-pointer hover:text-gray-700 select-none">役割別に表示</summary>
+            <div class="mt-3 space-y-3">
+              {Object.entries(roleGroups).map(([role, techs]) => (
+                <div>
+                  <div class="text-xs font-medium text-gray-500 mb-1.5">{role}</div>
+                  <div class="flex flex-wrap gap-1.5">
+                    {techs.map((tech) => (
+                      <TechBadge name={tech.name} slug={tech.slug} category={tech.category} color={tech.color} usageRole={tech.usage_role} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
 
         <div class="flex items-center gap-4">
           {app.site_url && (
@@ -81,6 +108,7 @@ const thumbnailUrl = getThumbnailUrl();
   <div id="tech-popover" class="fixed z-50 hidden pointer-events-none">
     <div class="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg max-w-xs pointer-events-auto">
       <div id="tech-popover-name" class="font-semibold mb-0.5"></div>
+      <div id="tech-popover-role" class="text-yellow-300 mb-0.5 hidden"></div>
       <div id="tech-popover-desc" class="text-gray-300 leading-relaxed"></div>
     </div>
   </div>
@@ -90,14 +118,22 @@ const thumbnailUrl = getThumbnailUrl();
   // Tech badge popover
   const popover = document.getElementById('tech-popover')!;
   const popoverName = document.getElementById('tech-popover-name')!;
+  const popoverRole = document.getElementById('tech-popover-role')!;
   const popoverDesc = document.getElementById('tech-popover-desc')!;
 
   function showPopover(badge: HTMLElement) {
     const name = badge.dataset.techName || '';
     const desc = badge.dataset.techDesc || '';
-    if (!desc) return;
+    const role = badge.dataset.techRole || '';
+    if (!desc && !role) return;
 
     popoverName.textContent = name;
+    if (role) {
+      popoverRole.textContent = role;
+      popoverRole.classList.remove('hidden');
+    } else {
+      popoverRole.classList.add('hidden');
+    }
     popoverDesc.textContent = desc;
     popover.classList.remove('hidden');
 

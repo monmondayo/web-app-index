@@ -23,6 +23,7 @@ export interface TechStack {
   slug: string;
   category: string;
   color: string | null;
+  usage_role?: string | null;
 }
 
 export interface User {
@@ -43,15 +44,15 @@ export async function getApps(db: D1Database): Promise<AppWithTech[]> {
   const appIds = apps.results.map((a) => a.id);
   const placeholders = appIds.map(() => '?').join(',');
   const techRows = await db.prepare(
-    `SELECT at.app_id, ts.* FROM app_tech at
+    `SELECT at.app_id, at.usage_role, ts.* FROM app_tech at
      JOIN tech_stacks ts ON at.tech_id = ts.id
      WHERE at.app_id IN (${placeholders})`
-  ).bind(...appIds).all<TechStack & { app_id: number }>();
+  ).bind(...appIds).all<TechStack & { app_id: number; usage_role: string | null }>();
 
   const techMap = new Map<number, TechStack[]>();
   for (const row of techRows.results) {
     const list = techMap.get(row.app_id) || [];
-    list.push({ id: row.id, name: row.name, slug: row.slug, category: row.category, color: row.color });
+    list.push({ id: row.id, name: row.name, slug: row.slug, category: row.category, color: row.color, usage_role: row.usage_role });
     techMap.set(row.app_id, list);
   }
 
@@ -66,7 +67,7 @@ export async function getAppById(db: D1Database, id: number): Promise<AppWithTec
   if (!app) return null;
 
   const techRows = await db.prepare(
-    `SELECT ts.* FROM app_tech at
+    `SELECT ts.*, at.usage_role FROM app_tech at
      JOIN tech_stacks ts ON at.tech_id = ts.id
      WHERE at.app_id = ?`
   ).bind(id).all<TechStack>();
@@ -76,7 +77,7 @@ export async function getAppById(db: D1Database, id: number): Promise<AppWithTec
 
 export async function createApp(
   db: D1Database,
-  data: { user_id: number; title: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; tech_ids?: number[] }
+  data: { user_id: number; title: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> }
 ): Promise<number> {
   const result = await db.prepare(
     `INSERT INTO apps (user_id, title, description, site_url, github_url, thumbnail_url, thumbnail_type)
@@ -88,7 +89,10 @@ export async function createApp(
 
   const appId = result.meta.last_row_id as number;
 
-  if (data.tech_ids?.length) {
+  if (data.tech_entries?.length) {
+    const stmt = db.prepare('INSERT INTO app_tech (app_id, tech_id, usage_role) VALUES (?, ?, ?)');
+    await db.batch(data.tech_entries.map((e) => stmt.bind(appId, e.id, e.usage_role || null)));
+  } else if (data.tech_ids?.length) {
     const stmt = db.prepare('INSERT INTO app_tech (app_id, tech_id) VALUES (?, ?)');
     await db.batch(data.tech_ids.map((tid) => stmt.bind(appId, tid)));
   }
@@ -99,7 +103,7 @@ export async function createApp(
 export async function updateApp(
   db: D1Database,
   id: number,
-  data: { title?: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; tech_ids?: number[] }
+  data: { title?: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> }
 ): Promise<void> {
   const fields: string[] = [];
   const values: unknown[] = [];
@@ -117,7 +121,13 @@ export async function updateApp(
     await db.prepare(`UPDATE apps SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run();
   }
 
-  if (data.tech_ids !== undefined) {
+  if (data.tech_entries !== undefined) {
+    await db.prepare('DELETE FROM app_tech WHERE app_id = ?').bind(id).run();
+    if (data.tech_entries.length) {
+      const stmt = db.prepare('INSERT INTO app_tech (app_id, tech_id, usage_role) VALUES (?, ?, ?)');
+      await db.batch(data.tech_entries.map((e) => stmt.bind(id, e.id, e.usage_role || null)));
+    }
+  } else if (data.tech_ids !== undefined) {
     await db.prepare('DELETE FROM app_tech WHERE app_id = ?').bind(id).run();
     if (data.tech_ids.length) {
       const stmt = db.prepare('INSERT INTO app_tech (app_id, tech_id) VALUES (?, ?)');

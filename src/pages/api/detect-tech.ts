@@ -1,13 +1,13 @@
 import type { APIRoute } from 'astro';
-import { getCurrentUser } from '../../lib/auth';
+import { getCurrentUser, isAdmin } from '../../lib/auth';
 import { detectTechFromGitHub } from '../../lib/tech-detector';
 import { getTechStacks } from '../../lib/db';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
   const user = await getCurrentUser(request, env.JWT_SECRET);
-  if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  if (!isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
   const { github_url } = await request.json();
@@ -15,13 +15,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: 'Missing github_url' }), { status: 400 });
   }
 
-  const detectedNames = await detectTechFromGitHub(github_url);
+  const detectedTech = await detectTechFromGitHub(github_url);
   const allTech = await getTechStacks(env.DB);
 
-  // Match detected names to tech_stacks entries
-  const matched = allTech.filter((t) =>
-    detectedNames.some((name) => name.toLowerCase() === t.name.toLowerCase())
-  );
+  // Match detected names to tech_stacks entries, preserving role
+  const matched = detectedTech
+    .map((dt) => {
+      const ts = allTech.find((t) => t.name.toLowerCase() === dt.name.toLowerCase());
+      return ts ? { ...ts, usage_role: dt.role } : null;
+    })
+    .filter((t): t is NonNullable<typeof t> => t !== null);
 
   return new Response(JSON.stringify({ detected: matched }), {
     headers: { 'Content-Type': 'application/json' },

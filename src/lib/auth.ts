@@ -87,3 +87,7 @@ export async function getCurrentUser(request: Request, jwtSecret: string): Promi
   if (!token) return null;
   return verifyToken(token, jwtSecret);
 }
+
+export function isAdmin(user: JWTPayload | null, adminUsername: string): boolean {
+  return !!user && user.githubUsername === adminUsername;
+}

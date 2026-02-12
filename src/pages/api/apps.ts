@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getApps, createApp, updateApp, deleteApp } from '../../lib/db';
-import { getCurrentUser } from '../../lib/auth';
+import { getCurrentUser, isAdmin } from '../../lib/auth';
 
 export const GET: APIRoute = async ({ locals }) => {
   const env = locals.runtime.env;
@@ -13,8 +13,8 @@ export const GET: APIRoute = async ({ locals }) => {
 export const POST: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
   const user = await getCurrentUser(request, env.JWT_SECRET);
-  if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  if (!isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
   const data = await request.json();
@@ -27,6 +27,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     thumbnail_url: data.thumbnail_url,
     thumbnail_type: data.thumbnail_type,
     tech_ids: data.tech_ids,
+    tech_entries: data.tech_entries,
   });
 
   return new Response(JSON.stringify({ id: appId }), {
@@ -38,8 +39,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
 export const PUT: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
   const user = await getCurrentUser(request, env.JWT_SECRET);
-  if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  if (!isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
   const data = await request.json();
@@ -55,6 +56,7 @@ export const PUT: APIRoute = async ({ request, locals }) => {
     thumbnail_url: data.thumbnail_url,
     thumbnail_type: data.thumbnail_type,
     tech_ids: data.tech_ids,
+    tech_entries: data.tech_entries,
   });
 
   return new Response(JSON.stringify({ ok: true }), {
@@ -65,8 +67,8 @@ export const PUT: APIRoute = async ({ request, locals }) => {
 export const DELETE: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
   const user = await getCurrentUser(request, env.JWT_SECRET);
-  if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  if (!isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
   const url = new URL(request.url);
