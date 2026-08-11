@@ -8,6 +8,7 @@
     "preview": "wrangler pages dev dist",
     "astro": "astro",
     "db:init": "wrangler d1 execute web-app-index-db --local --file=schema.sql",
+    "db:migrate:private": "wrangler d1 execute web-app-index-db --local --file=migrations/0001_private_apps.sql",
     "db:seed": "wrangler d1 execute web-app-index-db --local --file=seed.sql"
   },
   "dependencies": {

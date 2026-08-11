@@ -16,6 +16,8 @@
 ## 機能
 
 - GitHub OAuth ログイン
+- 公開／非公開アプリの登録（GitHub の private 判定を自動反映し、所有者のログイン中のみ表示）
+- 非公開 GitHub リポジトリからの技術スタック検出
 - アプリの CRUD (追加・編集・削除)
 - GitHub URL から技術スタックを自動検出 (package.json, requirements.txt, go.mod, Cargo.toml, README.md, Dockerfile)
 - 登録・更新時に技術スタックの利用用途 (usage_role) を自動付与
@@ -41,6 +43,8 @@
 | Homepage URL | `http://localhost:4321` |
 | Authorization callback URL | `http://localhost:4321/api/auth/callback` |
 | Enable Device Flow | チェック不要 (ブラウザリダイレクト方式を使うため) |
+
+ログイン時に GitHub の `repo` スコープを要求します。これは非公開リポジトリの技術スタックを読み取るために必要です。取得したアクセストークンは `JWT_SECRET` から導出した鍵で暗号化して D1 に保存され、ブラウザには送信されません。
 
 本番デプロイ後は Homepage URL と callback URL を `https://your-app.pages.dev` に変更する。
 
@@ -90,6 +94,12 @@ GitHub OAuth App の callback URL は `http://localhost:4321/api/auth/callback` 
 ```bash
 npm run db:init   # スキーマ適用
 npm run db:seed   # 技術スタック初期データ投入 (60+件)
+```
+
+すでにデータベースを作成済みの場合は、代わりに一度だけマイグレーションを適用する:
+
+```bash
+npm run db:migrate:private
 ```
 
 ### 5. 開発サーバー起動
@@ -143,6 +153,12 @@ npx wrangler d1 execute web-app-index-db --remote --file=schema.sql
 npx wrangler d1 execute web-app-index-db --remote --file=seed.sql
 ```
 
+既存の本番データベースには、デプロイ前に次のマイグレーションを一度だけ適用する:
+
+```bash
+npx wrangler d1 execute web-app-index-db --remote --file=migrations/0001_private_apps.sql
+```
+
 `--remote` を付けることで本番の D1 に対して実行されます。
 
 #### 5. GitHub OAuth の callback URL 追加
@@ -192,4 +208,5 @@ src/
 | `npm run build` | ビルド |
 | `npm run preview` | Wrangler でローカルプレビュー |
 | `npm run db:init` | D1 にスキーマ適用 |
+| `npm run db:migrate:private` | 既存のローカル D1 に非公開アプリ対応のマイグレーションを適用 |
 | `npm run db:seed` | 技術スタック初期データ投入 |

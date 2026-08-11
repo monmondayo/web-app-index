@@ -109,10 +109,46 @@ interface GitHubFile {
   encoding: string;
 }
 
+type GitHubCredentials = { accessToken?: string; clientId?: string; clientSecret?: string };
+
 function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
   const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
   if (!match) return null;
   return { owner: match[1], repo: match[2].replace(/\.git$/, '') };
+}
+
+function getAuthHeaders(githubCredentials?: GitHubCredentials): Record<string, string> {
+  if (githubCredentials?.accessToken) {
+    return { 'Authorization': `Bearer ${githubCredentials.accessToken}` };
+  }
+  if (githubCredentials?.clientId && githubCredentials.clientSecret) {
+    const encoded = btoa(`${githubCredentials.clientId}:${githubCredentials.clientSecret}`);
+    return { 'Authorization': `Basic ${encoded}` };
+  }
+  return {};
+}
+
+export async function isPrivateGitHubRepository(
+  githubUrl: string,
+  githubCredentials?: GitHubCredentials,
+): Promise<boolean | null> {
+  const parsed = parseGitHubUrl(githubUrl);
+  if (!parsed) return null;
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${parsed.owner}/${parsed.repo}`, {
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'web-app-index',
+        ...getAuthHeaders(githubCredentials),
+      },
+    });
+    if (!res.ok) return null;
+    const repository = await res.json() as { private?: boolean };
+    return typeof repository.private === 'boolean' ? repository.private : null;
+  } catch {
+    return null;
+  }
 }
 
 async function fetchGitHubFile(owner: string, repo: string, path: string, authHeaders?: Record<string, string>): Promise<string | null> {
@@ -131,15 +167,14 @@ async function fetchGitHubFile(owner: string, repo: string, path: string, authHe
   }
 }
 
-export async function detectTechFromGitHub(githubUrl: string, githubCredentials?: { clientId: string; clientSecret: string }): Promise<DetectedTech[]> {
+export async function detectTechFromGitHub(
+  githubUrl: string,
+  githubCredentials?: GitHubCredentials,
+): Promise<DetectedTech[]> {
   const parsed = parseGitHubUrl(githubUrl);
   if (!parsed) return [];
 
-  const authHeaders: Record<string, string> = {};
-  if (githubCredentials) {
-    const encoded = btoa(`${githubCredentials.clientId}:${githubCredentials.clientSecret}`);
-    authHeaders['Authorization'] = `Basic ${encoded}`;
-  }
+  const authHeaders = getAuthHeaders(githubCredentials);
 
   const detected = new Map<string, string>(); // name -> role
 

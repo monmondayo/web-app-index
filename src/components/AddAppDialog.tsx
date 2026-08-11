@@ -25,6 +25,7 @@ interface Props {
     site_url: string;
     github_url: string;
     thumbnail_url: string;
+    is_private: boolean;
     tech_ids: number[];
   };
 }
@@ -35,6 +36,7 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
   const [siteUrl, setSiteUrl] = useState(editApp?.site_url || '');
   const [githubUrl, setGithubUrl] = useState(editApp?.github_url || '');
   const [thumbnailUrl, setThumbnailUrl] = useState(editApp?.thumbnail_url || '');
+  const [isPrivate, setIsPrivate] = useState(editApp?.is_private || false);
   const [selectedTech, setSelectedTech] = useState<TechEntry[]>(
     editApp?.tech_ids?.map((id) => ({ id })) || []
   );
@@ -129,6 +131,7 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
         github_url: githubUrl.trim(),
         thumbnail_url: thumbnailUrl.trim(),
         thumbnail_type: thumbnailUrl ? 'manual' : 'auto',
+        is_private: isPrivate,
         tech_entries: selectedTech,
       };
 
@@ -230,6 +233,19 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
               </button>
             </div>
           </div>
+
+          <label class="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isPrivate}
+              onChange={(e) => setIsPrivate((e.target as HTMLInputElement).checked)}
+              class="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span>
+              <span class="block text-sm font-medium text-gray-800">非公開アプリとして登録</span>
+              <span class="mt-0.5 block text-xs text-gray-500">ログイン中の自分にだけ一覧・詳細・APIデータを表示します。GitHub が private の場合は自動で有効になります。</span>
+            </span>
+          </label>
 
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">サムネイル</label>

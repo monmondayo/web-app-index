@@ -27,7 +27,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const ext = file.name.split('.').pop() || 'png';
   const key = `thumbnails/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-  await env.R2.put(key, file.stream(), {
+  await env.R2.put(key, await file.arrayBuffer(), {
     httpMetadata: { contentType: file.type },
   });
 

@@ -9,10 +9,11 @@ import { CATEGORY_LABELS, CATEGORY_DOT_COLORS } from '../lib/icons';
 const env = Astro.locals.runtime.env;
 const user = await getCurrentUser(Astro.request, env.JWT_SECRET);
 const admin = isAdmin(user, env.ADMIN_GITHUB_USERNAME);
+Astro.response.headers.set('Cache-Control', 'private, no-store');
 
 let apps = [];
 try {
-  apps = await getApps(env.DB);
+  apps = await getApps(env.DB, user?.userId);
 } catch (e) {
   // DB not initialized yet - show empty state
 }
@@ -175,6 +176,9 @@ const categories = Object.entries(CATEGORY_LABELS);
       document.querySelectorAll('.edit-mode-ui').forEach((el) => {
         el.classList.toggle('hidden', !editMode);
       });
+      document.querySelectorAll('.private-badge').forEach((el) => {
+        el.classList.toggle('hidden', editMode);
+      });
 
       // Update button style
       if (editMode) {
@@ -298,6 +302,7 @@ const categories = Object.entries(CATEGORY_LABELS);
       site_url: string;
       github_url: string;
       thumbnail_url: string;
+      is_private: boolean;
       tech_ids: number[];
     }
 

@@ -1,12 +1,12 @@
 import type { APIRoute } from 'astro';
-import { getCurrentUser, isAdmin } from '../../lib/auth';
+import { decryptSecret, getCurrentUser, isAdmin } from '../../lib/auth';
 import { detectTechFromGitHub } from '../../lib/tech-detector';
-import { getTechStacks } from '../../lib/db';
+import { getEncryptedGithubAccessToken, getTechStacks } from '../../lib/db';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
   const user = await getCurrentUser(request, env.JWT_SECRET);
-  if (!isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
+  if (!user || !isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
@@ -15,7 +15,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: 'Missing github_url' }), { status: 400 });
   }
 
-  const detectedTech = await detectTechFromGitHub(github_url, {
+  const encryptedToken = await getEncryptedGithubAccessToken(env.DB, user.userId);
+  const accessToken = encryptedToken ? await decryptSecret(encryptedToken, env.JWT_SECRET) : null;
+  const detectedTech = await detectTechFromGitHub(github_url, accessToken ? { accessToken } : {
     clientId: env.GITHUB_CLIENT_ID,
     clientSecret: env.GITHUB_CLIENT_SECRET,
   });

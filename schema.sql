@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
   github_id TEXT UNIQUE NOT NULL,
   github_username TEXT NOT NULL,
   avatar_url TEXT,
+  github_access_token TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -17,6 +18,7 @@ CREATE TABLE IF NOT EXISTS apps (
   github_url TEXT,
   thumbnail_url TEXT,
   thumbnail_type TEXT DEFAULT 'auto',
+  is_private INTEGER NOT NULL DEFAULT 0 CHECK (is_private IN (0, 1)),
   display_order INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
@@ -44,5 +46,6 @@ CREATE TABLE IF NOT EXISTS app_tech (
 
 -- インデックス
 CREATE INDEX IF NOT EXISTS idx_apps_user_id ON apps(user_id);
+CREATE INDEX IF NOT EXISTS idx_apps_visibility ON apps(is_private, user_id);
 CREATE INDEX IF NOT EXISTS idx_app_tech_app_id ON app_tech(app_id);
 CREATE INDEX IF NOT EXISTS idx_app_tech_tech_id ON app_tech(tech_id);

@@ -9,6 +9,7 @@ export interface App {
   github_url: string | null;
   thumbnail_url: string | null;
   thumbnail_type: string;
+  is_private: number;
   display_order: number;
   created_at: string;
   updated_at: string;
@@ -32,13 +33,18 @@ export interface User {
   github_id: string;
   github_username: string;
   avatar_url: string | null;
+  github_access_token: string | null;
   created_at: string;
 }
 
-export async function getApps(db: D1Database): Promise<AppWithTech[]> {
-  const apps = await db.prepare(
-    'SELECT * FROM apps ORDER BY display_order ASC, updated_at DESC'
-  ).all<App>();
+export async function getApps(db: D1Database, viewerUserId?: number): Promise<AppWithTech[]> {
+  const apps = viewerUserId
+    ? await db.prepare(
+      'SELECT * FROM apps WHERE is_private = 0 OR user_id = ? ORDER BY display_order ASC, updated_at DESC'
+    ).bind(viewerUserId).all<App>()
+    : await db.prepare(
+      'SELECT * FROM apps WHERE is_private = 0 ORDER BY display_order ASC, updated_at DESC'
+    ).all<App>();
 
   if (!apps.results.length) return [];
 
@@ -63,8 +69,11 @@ export async function getApps(db: D1Database): Promise<AppWithTech[]> {
   }));
 }
 
-export async function getAppById(db: D1Database, id: number): Promise<AppWithTech | null> {
-  const app = await db.prepare('SELECT * FROM apps WHERE id = ?').bind(id).first<App>();
+export async function getAppById(db: D1Database, id: number, viewerUserId?: number): Promise<AppWithTech | null> {
+  const app = viewerUserId
+    ? await db.prepare('SELECT * FROM apps WHERE id = ? AND (is_private = 0 OR user_id = ?)')
+      .bind(id, viewerUserId).first<App>()
+    : await db.prepare('SELECT * FROM apps WHERE id = ? AND is_private = 0').bind(id).first<App>();
   if (!app) return null;
 
   const techRows = await db.prepare(
@@ -78,17 +87,17 @@ export async function getAppById(db: D1Database, id: number): Promise<AppWithTec
 
 export async function createApp(
   db: D1Database,
-  data: { user_id: number; title: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> }
+  data: { user_id: number; title: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; is_private?: boolean; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> }
 ): Promise<number> {
   const maxOrder = await db.prepare('SELECT COALESCE(MAX(display_order), 0) as max_order FROM apps').first<{ max_order: number }>();
   const nextOrder = (maxOrder?.max_order ?? 0) + 1;
 
   const result = await db.prepare(
-    `INSERT INTO apps (user_id, title, description, site_url, github_url, thumbnail_url, thumbnail_type, display_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO apps (user_id, title, description, site_url, github_url, thumbnail_url, thumbnail_type, is_private, display_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     data.user_id, data.title, data.description || null, data.site_url || null,
-    data.github_url || null, data.thumbnail_url || null, data.thumbnail_type || 'auto', nextOrder
+    data.github_url || null, data.thumbnail_url || null, data.thumbnail_type || 'auto', data.is_private ? 1 : 0, nextOrder
   ).run();
 
   const appId = result.meta.last_row_id as number;
@@ -107,8 +116,15 @@ export async function createApp(
 export async function updateApp(
   db: D1Database,
   id: number,
-  data: { title?: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> }
+  data: { title?: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; is_private?: boolean; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> },
+  ownerUserId?: number,
 ): Promise<void> {
+  if (ownerUserId !== undefined) {
+    const ownedApp = await db.prepare('SELECT id FROM apps WHERE id = ? AND user_id = ?')
+      .bind(id, ownerUserId).first<{ id: number }>();
+    if (!ownedApp) return;
+  }
+
   const fields: string[] = [];
   const values: unknown[] = [];
 
@@ -118,11 +134,14 @@ export async function updateApp(
   if (data.github_url !== undefined) { fields.push('github_url = ?'); values.push(data.github_url); }
   if (data.thumbnail_url !== undefined) { fields.push('thumbnail_url = ?'); values.push(data.thumbnail_url); }
   if (data.thumbnail_type !== undefined) { fields.push('thumbnail_type = ?'); values.push(data.thumbnail_type); }
+  if (data.is_private !== undefined) { fields.push('is_private = ?'); values.push(data.is_private ? 1 : 0); }
 
   if (fields.length) {
     fields.push("updated_at = datetime('now')");
     values.push(id);
-    await db.prepare(`UPDATE apps SET ${fields.join(', ')} WHERE id = ?`).bind(...values).run();
+    if (ownerUserId !== undefined) values.push(ownerUserId);
+    const ownershipClause = ownerUserId !== undefined ? ' AND user_id = ?' : '';
+    await db.prepare(`UPDATE apps SET ${fields.join(', ')} WHERE id = ?${ownershipClause}`).bind(...values).run();
   }
 
   if (data.tech_entries !== undefined) {
@@ -140,7 +159,11 @@ export async function updateApp(
   }
 }
 
-export async function deleteApp(db: D1Database, id: number): Promise<void> {
+export async function deleteApp(db: D1Database, id: number, ownerUserId?: number): Promise<void> {
+  const app = ownerUserId === undefined
+    ? await db.prepare('SELECT id FROM apps WHERE id = ?').bind(id).first<{ id: number }>()
+    : await db.prepare('SELECT id FROM apps WHERE id = ? AND user_id = ?').bind(id, ownerUserId).first<{ id: number }>();
+  if (!app) return;
   await db.batch([
     db.prepare('DELETE FROM app_tech WHERE app_id = ?').bind(id),
     db.prepare('DELETE FROM apps WHERE id = ?').bind(id),
@@ -156,24 +179,32 @@ export async function findOrCreateUser(
   db: D1Database,
   githubId: string,
   username: string,
-  avatarUrl: string | null
+  avatarUrl: string | null,
+  githubAccessToken?: string,
 ): Promise<User> {
   const existing = await db.prepare('SELECT * FROM users WHERE github_id = ?').bind(githubId).first<User>();
   if (existing) {
-    await db.prepare('UPDATE users SET github_username = ?, avatar_url = ? WHERE id = ?')
-      .bind(username, avatarUrl, existing.id).run();
-    return { ...existing, github_username: username, avatar_url: avatarUrl };
+    await db.prepare('UPDATE users SET github_username = ?, avatar_url = ?, github_access_token = COALESCE(?, github_access_token) WHERE id = ?')
+      .bind(username, avatarUrl, githubAccessToken || null, existing.id).run();
+    return { ...existing, github_username: username, avatar_url: avatarUrl, github_access_token: githubAccessToken || existing.github_access_token };
   }
 
   const result = await db.prepare(
-    'INSERT INTO users (github_id, github_username, avatar_url) VALUES (?, ?, ?)'
-  ).bind(githubId, username, avatarUrl).run();
+    'INSERT INTO users (github_id, github_username, avatar_url, github_access_token) VALUES (?, ?, ?, ?)'
+  ).bind(githubId, username, avatarUrl, githubAccessToken || null).run();
 
   return {
     id: result.meta.last_row_id as number,
     github_id: githubId,
     github_username: username,
     avatar_url: avatarUrl,
+    github_access_token: githubAccessToken || null,
     created_at: new Date().toISOString(),
   };
+}
+
+export async function getEncryptedGithubAccessToken(db: D1Database, userId: number): Promise<string | null> {
+  const user = await db.prepare('SELECT github_access_token FROM users WHERE id = ?')
+    .bind(userId).first<{ github_access_token: string | null }>();
+  return user?.github_access_token || null;
 }

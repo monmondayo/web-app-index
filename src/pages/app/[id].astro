@@ -7,9 +7,10 @@ import { getCurrentUser } from '../../lib/auth';
 
 const env = Astro.locals.runtime.env;
 const user = await getCurrentUser(Astro.request, env.JWT_SECRET);
+Astro.response.headers.set('Cache-Control', 'private, no-store');
 const id = Number(Astro.params.id);
 
-const app = await getAppById(env.DB, id);
+const app = await getAppById(env.DB, id, user?.userId);
 if (!app) {
   return Astro.redirect('/');
 }
@@ -49,7 +50,17 @@ if (hasRoles) {
         </div>
       )}
       <div class="p-6 sm:p-8">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">{app.title}</h1>
+        <div class="flex items-center gap-3 mb-2">
+          <h1 class="text-3xl font-bold text-gray-900">{app.title}</h1>
+          {!!app.is_private && (
+            <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              非公開
+            </span>
+          )}
+        </div>
         {app.description && (
           <p class="text-gray-600 text-lg mb-6">{app.description}</p>
         )}
