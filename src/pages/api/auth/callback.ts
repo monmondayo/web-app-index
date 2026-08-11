@@ -1,14 +1,22 @@
 import type { APIRoute } from 'astro';
 import { findOrCreateUser } from '../../../lib/db';
-import { createToken, getSessionCookie } from '../../../lib/auth';
+import {
+  clearOAuthStateCookie,
+  createToken,
+  encryptSecret,
+  getOAuthStateFromRequest,
+  getSessionCookie,
+} from '../../../lib/auth';
 
 export const GET: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
+  const state = url.searchParams.get('state');
+  const expectedState = getOAuthStateFromRequest(request);
 
-  if (!code) {
-    return new Response('Missing code parameter', { status: 400 });
+  if (!code || !state || !expectedState || state !== expectedState) {
+    return new Response('Invalid OAuth callback', { status: 400 });
   }
 
   // Exchange code for access token
@@ -39,13 +47,19 @@ export const GET: APIRoute = async ({ request, locals }) => {
   });
 
   const githubUser = await userRes.json() as { id: number; login: string; avatar_url: string };
+  if (!userRes.ok || !githubUser.id || !githubUser.login) {
+    return new Response('Failed to get GitHub user', { status: 400 });
+  }
+
+  const encryptedAccessToken = await encryptSecret(tokenData.access_token, env.JWT_SECRET);
 
   // Create or update user in DB
   const user = await findOrCreateUser(
     env.DB,
     String(githubUser.id),
     githubUser.login,
-    githubUser.avatar_url
+    githubUser.avatar_url,
+    encryptedAccessToken,
   );
 
   // Create JWT
@@ -55,11 +69,12 @@ export const GET: APIRoute = async ({ request, locals }) => {
     avatarUrl: user.avatar_url,
   }, env.JWT_SECRET);
 
+  const headers = new Headers({ 'Location': '/' });
+  headers.append('Set-Cookie', getSessionCookie(token));
+  headers.append('Set-Cookie', clearOAuthStateCookie());
+
   return new Response(null, {
     status: 302,
-    headers: {
-      'Location': '/',
-      'Set-Cookie': getSessionCookie(token),
-    },
+    headers,
   });
 };

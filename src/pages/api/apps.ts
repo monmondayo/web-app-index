@@ -1,13 +1,13 @@
 import type { APIRoute } from 'astro';
-import { getApps, createApp, updateApp, deleteApp, getTechStacks } from '../../lib/db';
-import { getCurrentUser, isAdmin } from '../../lib/auth';
-import { detectTechFromGitHub } from '../../lib/tech-detector';
+import { getApps, createApp, updateApp, deleteApp, getEncryptedGithubAccessToken, getTechStacks } from '../../lib/db';
+import { decryptSecret, getCurrentUser, isAdmin } from '../../lib/auth';
+import { detectTechFromGitHub, isPrivateGitHubRepository } from '../../lib/tech-detector';
 
 async function mergeUsageRoles(
   db: import('@cloudflare/workers-types').D1Database,
   githubUrl: string | undefined,
   techEntries: Array<{ id: number; usage_role?: string }> | undefined,
-  githubCredentials?: { clientId: string; clientSecret: string },
+  githubCredentials?: { accessToken?: string; clientId?: string; clientSecret?: string },
 ): Promise<Array<{ id: number; usage_role?: string }> | undefined> {
   if (!techEntries?.length || !githubUrl) return techEntries;
 
@@ -34,23 +34,34 @@ async function mergeUsageRoles(
   }));
 }
 
-export const GET: APIRoute = async ({ locals }) => {
+export const GET: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
-  const apps = await getApps(env.DB);
+  const user = await getCurrentUser(request, env.JWT_SECRET);
+  const apps = await getApps(env.DB, user?.userId);
   return new Response(JSON.stringify(apps), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'private, no-store',
+    },
   });
 };
 
 export const POST: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
   const user = await getCurrentUser(request, env.JWT_SECRET);
-  if (!isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
+  if (!user || !isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
   const data = await request.json();
-  const ghCreds = { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET };
+  const encryptedToken = await getEncryptedGithubAccessToken(env.DB, user.userId);
+  const accessToken = encryptedToken ? await decryptSecret(encryptedToken, env.JWT_SECRET) : null;
+  const ghCreds = accessToken
+    ? { accessToken }
+    : { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET };
+  const privateRepository = data.github_url
+    ? await isPrivateGitHubRepository(data.github_url, ghCreds)
+    : null;
   const techEntries = await mergeUsageRoles(env.DB, data.github_url, data.tech_entries, ghCreds);
   const appId = await createApp(env.DB, {
     user_id: user.userId,
@@ -60,6 +71,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     github_url: data.github_url,
     thumbnail_url: data.thumbnail_url,
     thumbnail_type: data.thumbnail_type,
+    is_private: data.is_private === true || privateRepository === true,
     tech_ids: techEntries ? undefined : data.tech_ids,
     tech_entries: techEntries || data.tech_entries,
   });
@@ -73,7 +85,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 export const PUT: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
   const user = await getCurrentUser(request, env.JWT_SECRET);
-  if (!isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
+  if (!user || !isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
@@ -82,7 +94,14 @@ export const PUT: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: 'Missing app id' }), { status: 400 });
   }
 
-  const ghCreds = { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET };
+  const encryptedToken = await getEncryptedGithubAccessToken(env.DB, user.userId);
+  const accessToken = encryptedToken ? await decryptSecret(encryptedToken, env.JWT_SECRET) : null;
+  const ghCreds = accessToken
+    ? { accessToken }
+    : { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET };
+  const privateRepository = data.github_url
+    ? await isPrivateGitHubRepository(data.github_url, ghCreds)
+    : null;
   const techEntries = await mergeUsageRoles(env.DB, data.github_url, data.tech_entries, ghCreds);
   await updateApp(env.DB, data.id, {
     title: data.title,
@@ -91,9 +110,10 @@ export const PUT: APIRoute = async ({ request, locals }) => {
     github_url: data.github_url,
     thumbnail_url: data.thumbnail_url,
     thumbnail_type: data.thumbnail_type,
+    is_private: data.is_private === true || privateRepository === true,
     tech_ids: techEntries ? undefined : data.tech_ids,
     tech_entries: techEntries || data.tech_entries,
-  });
+  }, user.userId);
 
   return new Response(JSON.stringify({ ok: true }), {
     headers: { 'Content-Type': 'application/json' },
@@ -103,7 +123,7 @@ export const PUT: APIRoute = async ({ request, locals }) => {
 export const DELETE: APIRoute = async ({ request, locals }) => {
   const env = locals.runtime.env;
   const user = await getCurrentUser(request, env.JWT_SECRET);
-  if (!isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
+  if (!user || !isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
@@ -113,7 +133,7 @@ export const DELETE: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: 'Missing app id' }), { status: 400 });
   }
 
-  await deleteApp(env.DB, id);
+  await deleteApp(env.DB, id, user.userId);
   return new Response(JSON.stringify({ ok: true }), {
     headers: { 'Content-Type': 'application/json' },
   });

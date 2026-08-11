@@ -26,10 +26,19 @@ const editData = admin ? JSON.stringify({
   site_url: app.site_url || '',
   github_url: app.github_url || '',
   thumbnail_url: app.thumbnail_url || '',
+  is_private: !!app.is_private,
   tech_ids: app.tech_stacks.map(t => t.id),
 }) : '';
 ---
 <article class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow group relative" data-app-id={app.id}>
+  {!!app.is_private && (
+    <div class="private-badge absolute top-2 right-2 z-10 inline-flex items-center gap-1 rounded-full bg-gray-900/80 px-2 py-1 text-xs font-medium text-white backdrop-blur">
+      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+      </svg>
+      非公開
+    </div>
+  )}
   {admin && (
     <div class="edit-mode-ui absolute top-2 left-2 z-10 hidden">
       <button

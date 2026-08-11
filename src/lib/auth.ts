@@ -7,6 +7,7 @@ export interface JWTPayload {
 
 const COOKIE_NAME = 'session';
 const TOKEN_EXPIRY = 7 * 24 * 60 * 60; // 7 days
+const OAUTH_STATE_COOKIE_NAME = 'oauth_state';
 
 // Simple JWT implementation using Web Crypto API (available in Cloudflare Workers)
 async function createHmacKey(secret: string): Promise<CryptoKey> {
@@ -23,7 +24,7 @@ function base64UrlEncode(data: ArrayBuffer | Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function base64UrlDecode(str: string): Uint8Array {
+function base64UrlDecode(str: string): Uint8Array<ArrayBuffer> {
   str = str.replace(/-/g, '+').replace(/_/g, '/');
   while (str.length % 4) str += '=';
   const binary = atob(str);
@@ -80,6 +81,58 @@ export function getTokenFromRequest(request: Request): string | null {
   const cookies = request.headers.get('Cookie') || '';
   const match = cookies.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
   return match ? match[1] : null;
+}
+
+export function createOAuthState(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return base64UrlEncode(bytes);
+}
+
+export function getOAuthStateCookie(state: string): string {
+  return `${OAUTH_STATE_COOKIE_NAME}=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`;
+}
+
+export function clearOAuthStateCookie(): string {
+  return `${OAUTH_STATE_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+}
+
+export function getOAuthStateFromRequest(request: Request): string | null {
+  const cookies = request.headers.get('Cookie') || '';
+  const match = cookies.match(new RegExp(`${OAUTH_STATE_COOKIE_NAME}=([^;]+)`));
+  return match ? match[1] : null;
+}
+
+async function createEncryptionKey(secret: string): Promise<CryptoKey> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+  return crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+/** Encrypts server-side credentials before persisting them in D1. */
+export async function encryptSecret(value: string, secret: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await createEncryptionKey(secret);
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(value),
+  );
+  return `v1.${base64UrlEncode(iv)}.${base64UrlEncode(encrypted)}`;
+}
+
+export async function decryptSecret(value: string, secret: string): Promise<string | null> {
+  try {
+    const [version, iv, encrypted] = value.split('.');
+    if (version !== 'v1' || !iv || !encrypted) return null;
+    const key = await createEncryptionKey(secret);
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: base64UrlDecode(iv) },
+      key,
+      base64UrlDecode(encrypted),
+    );
+    return new TextDecoder().decode(decrypted);
+  } catch {
+    return null;
+  }
 }
 
 export async function getCurrentUser(request: Request, jwtSecret: string): Promise<JWTPayload | null> {
