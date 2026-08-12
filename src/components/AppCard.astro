@@ -12,6 +12,7 @@ const { app, admin } = Astro.props;
 // Generate thumbnail URL
 function getThumbnailUrl(app: AppWithTech): string {
   if (app.thumbnail_url) return app.thumbnail_url;
+  if (app.thumbnail_type === 'none') return '';
   if (app.site_url) return `https://image.thum.io/get/${app.site_url}`;
   return '';
 }
@@ -27,6 +28,7 @@ const editData = admin ? JSON.stringify({
   github_url: app.github_url || '',
   thumbnail_url: app.thumbnail_url || '',
   is_private: !!app.is_private,
+  thumbnail_type: app.thumbnail_type || 'auto',
   tech_ids: app.tech_stacks.map(t => t.id),
 }) : '';
 ---

@@ -26,9 +26,14 @@ interface Props {
     github_url: string;
     thumbnail_url: string;
     is_private: boolean;
+    thumbnail_type: string;
     tech_ids: number[];
   };
 }
+
+type ThumbnailType = 'auto' | 'manual' | 'none';
+
+const MAX_THUMBNAIL_SIZE = 10 * 1024 * 1024;
 
 export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Props) {
   const [title, setTitle] = useState(editApp?.title || '');
@@ -37,11 +42,20 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
   const [githubUrl, setGithubUrl] = useState(editApp?.github_url || '');
   const [thumbnailUrl, setThumbnailUrl] = useState(editApp?.thumbnail_url || '');
   const [isPrivate, setIsPrivate] = useState(editApp?.is_private || false);
+  const [thumbnailType, setThumbnailType] = useState<ThumbnailType>(
+    editApp?.thumbnail_url
+      ? 'manual'
+      : editApp?.thumbnail_type === 'none'
+        ? 'none'
+        : 'auto'
+  );
+  const [localPreviewUrl, setLocalPreviewUrl] = useState('');
   const [selectedTech, setSelectedTech] = useState<TechEntry[]>(
     editApp?.tech_ids?.map((id) => ({ id })) || []
   );
   const [techStacks, setTechStacks] = useState<TechStack[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState('');
 
@@ -54,8 +68,18 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    return () => {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    };
+  }, [localPreviewUrl]);
+
   // Auto-generate thumbnail preview from site URL
-  const previewThumbnail = thumbnailUrl || (siteUrl ? `https://image.thum.io/get/${siteUrl}` : '');
+  const previewThumbnail = thumbnailType === 'manual'
+    ? localPreviewUrl || thumbnailUrl
+    : thumbnailType === 'auto' && siteUrl
+      ? `https://image.thum.io/get/${siteUrl}`
+      : '';
 
   const selectedIds = selectedTech.map((t) => t.id);
 
@@ -98,18 +122,58 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
     const file = input.files?.[0];
     if (!file) return;
 
+    setError('');
+    if (!file.type.startsWith('image/')) {
+      setError('画像ファイルを選択してください');
+      input.value = '';
+      return;
+    }
+    if (file.size > MAX_THUMBNAIL_SIZE) {
+      setError('画像は10MB以下のものを選択してください');
+      input.value = '';
+      return;
+    }
+
+    const previousThumbnailType = thumbnailType;
+    const previewUrl = URL.createObjectURL(file);
+    setLocalPreviewUrl(previewUrl);
+    setThumbnailType('manual');
+    setUploading(true);
+
     const formData = new FormData();
     formData.append('file', file);
 
     try {
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      const data = await res.json() as { url: string };
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || 'アップロードに失敗しました');
+      }
       if (data.url) {
         setThumbnailUrl(data.url);
       }
-    } catch {
-      setError('アップロードに失敗しました');
+    } catch (err: any) {
+      setLocalPreviewUrl('');
+      setThumbnailType(previousThumbnailType);
+      setError(err.message || 'アップロードに失敗しました');
+    } finally {
+      setUploading(false);
+      input.value = '';
     }
+  }
+
+  function handleClearThumbnail() {
+    setThumbnailUrl('');
+    setLocalPreviewUrl('');
+    setThumbnailType('none');
+    setError('');
+  }
+
+  function handleUseAutoThumbnail() {
+    setThumbnailUrl('');
+    setLocalPreviewUrl('');
+    setThumbnailType('auto');
+    setError('');
   }
 
   async function handleSubmit(e: Event) {
@@ -130,7 +194,7 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
         site_url: siteUrl.trim(),
         github_url: githubUrl.trim(),
         thumbnail_url: thumbnailUrl.trim(),
-        thumbnail_type: thumbnailUrl ? 'manual' : 'auto',
+        thumbnail_type: thumbnailType,
         is_private: isPrivate,
         tech_entries: selectedTech,
       };
@@ -250,19 +314,46 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">サムネイル</label>
             {previewThumbnail && (
-              <div class="mb-2 aspect-video bg-gray-100 rounded-lg overflow-hidden max-w-xs">
+              <div class="mb-2 aspect-video bg-gray-100 rounded-lg overflow-hidden max-w-xs relative">
                 <img src={previewThumbnail} alt="Preview" class="w-full h-full object-cover" />
+                {uploading && (
+                  <div class="absolute inset-0 flex items-center justify-center bg-black/50 text-white text-sm font-medium">
+                    アップロード中...
+                  </div>
+                )}
               </div>
             )}
             <div class="flex items-center gap-3">
-              <label class="px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 cursor-pointer transition-colors">
-                画像をアップロード
-                <input type="file" accept="image/*" onChange={handleFileUpload} class="hidden" />
+              <label class={`px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200 cursor-pointer'}`}>
+                {uploading ? 'アップロード中...' : '画像をアップロード'}
+                <input type="file" accept="image/*" onChange={handleFileUpload} disabled={uploading} class="hidden" />
               </label>
-              <span class="text-xs text-gray-500">
-                またはサイトURLから自動取得
-              </span>
+              {previewThumbnail && !uploading && (
+                <button
+                  type="button"
+                  onClick={handleClearThumbnail}
+                  class="px-3 py-2 text-red-600 text-sm font-medium rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  クリア
+                </button>
+              )}
+              {thumbnailType === 'none' && siteUrl && (
+                <button
+                  type="button"
+                  onClick={handleUseAutoThumbnail}
+                  class="px-3 py-2 text-indigo-600 text-sm font-medium rounded-lg hover:bg-indigo-50 transition-colors"
+                >
+                  自動取得に戻す
+                </button>
+              )}
             </div>
+            <p class="mt-2 text-xs text-gray-500">
+              {thumbnailType === 'auto'
+                ? 'サイトURLから自動取得します'
+                : thumbnailType === 'none'
+                  ? 'サムネイルは表示されません'
+                  : '10MB以下の画像をアップロードできます'}
+            </p>
           </div>
 
           <div>
@@ -284,7 +375,7 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || uploading}
               class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? '保存中...' : editApp ? '更新' : '追加'}
