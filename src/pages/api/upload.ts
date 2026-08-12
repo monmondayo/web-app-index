@@ -19,9 +19,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: 'Only image files are allowed' }), { status: 400 });
   }
 
-  // Validate file size (max 5MB)
-  if (file.size > 5 * 1024 * 1024) {
-    return new Response(JSON.stringify({ error: 'File too large (max 5MB)' }), { status: 400 });
+  // Validate file size (max 10MB)
+  if (file.size > 10 * 1024 * 1024) {
+    return new Response(JSON.stringify({ error: '画像は10MB以下のものを選択してください' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const ext = file.name.split('.').pop() || 'png';
