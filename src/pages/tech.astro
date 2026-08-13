@@ -1,0 +1,160 @@
+---
+import Layout from '../layouts/Layout.astro';
+import LibrarySidebar from '../components/LibrarySidebar.astro';
+import { getApps, getTechStacks, type AppWithTech } from '../lib/db';
+import { getCurrentUser } from '../lib/auth';
+import { APP_CATEGORIES, APP_STATUSES, TECH_CATEGORY_ROLES, type AppCategory, type AppStatus } from '../lib/catalog';
+import { CATEGORY_LABELS, TECH_DESCRIPTIONS, getTechIconSvg } from '../lib/icons';
+
+const env = Astro.locals.runtime.env;
+const user = await getCurrentUser(Astro.request, env.JWT_SECRET);
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+let apps: AppWithTech[] = [];
+let allTech = [];
+try {
+  [apps, allTech] = await Promise.all([getApps(env.DB, user?.userId), getTechStacks(env.DB)]);
+} catch {
+  // DB not initialized yet
+}
+
+const categoryCounts = Object.fromEntries(
+  Object.keys(APP_CATEGORIES).map((key) => [key, apps.filter((app) => app.category === key).length])
+) as Record<AppCategory, number>;
+const statusCounts = Object.fromEntries(
+  Object.keys(APP_STATUSES).map((key) => [key, apps.filter((app) => app.status === key).length])
+) as Record<AppStatus, number>;
+
+const techUsage = new Map<number, AppWithTech[]>();
+for (const app of apps) {
+  for (const tech of app.tech_stacks) {
+    const list = techUsage.get(tech.id) || [];
+    list.push(app);
+    techUsage.set(tech.id, list);
+  }
+}
+const usedTech = allTech
+  .filter((tech) => techUsage.has(tech.id))
+  .sort((a, b) => (techUsage.get(b.id)?.length || 0) - (techUsage.get(a.id)?.length || 0));
+const techGroups = Object.keys(CATEGORY_LABELS)
+  .map((category) => ({ category, tech: usedTech.filter((item) => item.category === category) }))
+  .filter((group) => group.tech.length > 0);
+---
+<Layout title="技術カタログ - App Library">
+  <div class="min-h-screen lg:flex bg-slate-100">
+    <LibrarySidebar
+      user={user}
+      active="tech"
+      totalApps={apps.length}
+      categoryCounts={categoryCounts}
+      statusCounts={statusCounts}
+    />
+
+    <div class="min-w-0 flex-1">
+      <header class="library-topbar">
+        <div class="relative min-w-0 flex-1 max-w-xl">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke-width="2" /><path stroke-linecap="round" stroke-width="2" d="m20 20-4-4" /></svg>
+          <input id="tech-search" type="search" class="library-search-input" placeholder="技術名、役割、説明で検索…" autocomplete="off" />
+        </div>
+        <span id="tech-visible-count" class="text-xs text-slate-500 whitespace-nowrap">{usedTech.length} technologies</span>
+      </header>
+
+      <main class="px-4 sm:px-6 lg:px-10 py-7 lg:py-10 max-w-[1400px] mx-auto">
+        <div class="mb-9 max-w-3xl">
+          <p class="eyebrow mb-2">Explore / Technology</p>
+          <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-slate-950">技術カタログ</h1>
+          <p class="mt-3 text-sm leading-7 text-slate-500">名前を覚えるための一覧ではなく、「何を担当し、どのアプリで使っているか」を理解するための技術図鑑です。</p>
+        </div>
+
+        <div class="tech-summary-grid mb-9">
+          {Object.entries(TECH_CATEGORY_ROLES).map(([key, role]) => {
+            const count = usedTech.filter((tech) => tech.category === key).length;
+            if (!count) return null;
+            return (
+              <button type="button" class="tech-summary-item" data-tech-category={key}>
+                <span class:list={['category-accent', `category-accent-${key === 'frontend' ? 'sky' : key === 'backend' ? 'emerald' : key === 'database' ? 'violet' : key === 'infrastructure' ? 'amber' : key === 'library' ? 'fuchsia' : 'slate'}`]}></span>
+                <span><strong>{role.label}</strong><small>{role.description}</small></span>
+                <b>{count}</b>
+              </button>
+            );
+          })}
+        </div>
+
+        <div id="tech-groups" class="space-y-8">
+          {techGroups.map((group) => (
+            <section class="tech-group" data-category={group.category}>
+              <div class="flex items-center gap-3 mb-3 px-1">
+                <h2 class="text-sm font-semibold text-slate-800">{CATEGORY_LABELS[group.category]}</h2>
+                <span class="text-xs text-slate-400">{group.tech.length}</span>
+                <span class="hidden sm:block text-xs text-slate-400">{TECH_CATEGORY_ROLES[group.category]?.description}</span>
+              </div>
+              <div class="tech-catalog-list">
+                {group.tech.map((tech) => {
+                  const usedBy = techUsage.get(tech.id) || [];
+                  const searchText = [tech.name, CATEGORY_LABELS[tech.category], TECH_CATEGORY_ROLES[tech.category]?.label, TECH_DESCRIPTIONS[tech.name], ...usedBy.map((app) => app.title)].filter(Boolean).join(' ').toLowerCase();
+                  return (
+                    <details class="tech-catalog-item" data-search={searchText}>
+                      <summary>
+                        <span class="tech-catalog-icon"><img src={getTechIconSvg(tech.slug, tech.color)} alt="" loading="lazy" /></span>
+                        <span class="min-w-0">
+                          <strong>{tech.name}</strong>
+                          <span>{TECH_DESCRIPTIONS[tech.name] || 'Webアプリを構成する技術のひとつです'}</span>
+                        </span>
+                        <span class="tech-catalog-role">{TECH_CATEGORY_ROLES[tech.category]?.label || '開発支援'}</span>
+                        <span class="tech-usage-count"><b>{usedBy.length}</b> apps</span>
+                        <svg class="tech-catalog-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6" /></svg>
+                      </summary>
+                      <div class="tech-catalog-detail">
+                        <p class="eyebrow">Used in</p>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                          {usedBy.map((app) => <a href={`/app/${app.id}`} class="used-app-link">{app.title} →</a>)}
+                        </div>
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+        <div id="tech-empty" class="empty-library hidden"><h2>一致する技術がありません</h2><p>別の技術名や役割で検索してください。</p></div>
+      </main>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  const techSearch = document.getElementById('tech-search') as HTMLInputElement | null;
+  const techCount = document.getElementById('tech-visible-count');
+  const techEmpty = document.getElementById('tech-empty');
+  let activeCategory = 'all';
+
+  function filterTech() {
+    const query = techSearch?.value.trim().toLowerCase() || '';
+    let visible = 0;
+    document.querySelectorAll<HTMLElement>('.tech-catalog-item').forEach((item) => {
+      const group = item.closest<HTMLElement>('.tech-group');
+      const matchesCategory = activeCategory === 'all' || group?.dataset.category === activeCategory;
+      const matchesQuery = !query || (item.dataset.search || '').includes(query);
+      item.classList.toggle('hidden', !(matchesCategory && matchesQuery));
+      if (matchesCategory && matchesQuery) visible += 1;
+    });
+    document.querySelectorAll<HTMLElement>('.tech-group').forEach((group) => {
+      const hasVisible = Array.from(group.querySelectorAll<HTMLElement>('.tech-catalog-item')).some((item) => !item.classList.contains('hidden'));
+      group.classList.toggle('hidden', !hasVisible);
+    });
+    if (techCount) techCount.textContent = `${visible} technologies`;
+    techEmpty?.classList.toggle('hidden', visible > 0);
+  }
+
+  techSearch?.addEventListener('input', filterTech);
+  document.querySelectorAll<HTMLButtonElement>('.tech-summary-item').forEach((button) => {
+    button.addEventListener('click', () => {
+      const next = button.dataset.techCategory || 'all';
+      activeCategory = activeCategory === next ? 'all' : next;
+      document.querySelectorAll('.tech-summary-item').forEach((item) => item.classList.remove('is-active'));
+      if (activeCategory !== 'all') button.classList.add('is-active');
+      filterTech();
+    });
+  });
+</script>

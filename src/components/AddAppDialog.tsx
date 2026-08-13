@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import TechSelector from './TechSelector';
+import { APP_CATEGORIES, APP_STATUSES, type AppCategory, type AppStatus } from '../lib/catalog';
 
 interface TechStack {
   id: number;
@@ -27,6 +28,8 @@ interface Props {
     thumbnail_url: string;
     is_private: boolean;
     thumbnail_type: string;
+    category: AppCategory;
+    status: AppStatus;
     tech_ids: number[];
   };
 }
@@ -42,6 +45,8 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
   const [githubUrl, setGithubUrl] = useState(editApp?.github_url || '');
   const [thumbnailUrl, setThumbnailUrl] = useState(editApp?.thumbnail_url || '');
   const [isPrivate, setIsPrivate] = useState(editApp?.is_private || false);
+  const [category, setCategory] = useState<AppCategory>(editApp?.category || 'other');
+  const [status, setStatus] = useState<AppStatus>(editApp?.status || 'live');
   const [thumbnailType, setThumbnailType] = useState<ThumbnailType>(
     editApp?.thumbnail_url
       ? 'manual'
@@ -196,6 +201,8 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
         thumbnail_url: thumbnailUrl.trim(),
         thumbnail_type: thumbnailType,
         is_private: isPrivate,
+        category,
+        status,
         tech_entries: selectedTech,
       };
 
@@ -264,6 +271,33 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
               rows={3}
               placeholder="アプリの説明..."
             />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">カテゴリー</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory((e.target as HTMLSelectElement).value as AppCategory)}
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+              >
+                {Object.entries(APP_CATEGORIES).map(([value, item]) => (
+                  <option value={value}>{item.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">ステータス</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus((e.target as HTMLSelectElement).value as AppStatus)}
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+              >
+                {Object.entries(APP_STATUSES).map(([value, item]) => (
+                  <option value={value}>{item.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>

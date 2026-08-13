@@ -18,6 +18,9 @@
 - GitHub OAuth ログイン
 - 公開／非公開アプリの登録（GitHub の private 判定を自動反映し、所有者のログイン中のみ表示）
 - 非公開 GitHub リポジトリからの技術スタック検出
+- 目的別カテゴリーと公開状態によるライブラリ型ナビゲーション
+- リスト表示、横断検索、技術構成の展開表示
+- 技術の役割・説明・採用アプリを確認できる技術カタログ
 - アプリの CRUD (追加・編集・削除)
 - GitHub URL から技術スタックを自動検出 (package.json, requirements.txt, go.mod, Cargo.toml, README.md, Dockerfile)
 - 登録・更新時に技術スタックの利用用途 (usage_role) を自動付与
@@ -102,6 +105,12 @@ npm run db:seed   # 技術スタック初期データ投入 (60+件)
 npm run db:migrate:private
 ```
 
+ライブラリ型ナビゲーション導入前の既存DBには、続けて次のマイグレーションも適用する:
+
+```bash
+npm run db:migrate:library
+```
+
 ### 5. 開発サーバー起動
 
 ```bash
@@ -159,6 +168,12 @@ npx wrangler d1 execute web-app-index-db --remote --file=seed.sql
 npx wrangler d1 execute web-app-index-db --remote --file=migrations/0001_private_apps.sql
 ```
 
+ライブラリ型ナビゲーション用のカテゴリーとステータスを追加する:
+
+```bash
+npx wrangler d1 execute web-app-index-db --remote --file=migrations/0002_library_navigation.sql
+```
+
 `--remote` を付けることで本番の D1 に対して実行されます。
 
 #### 5. GitHub OAuth の callback URL 追加
@@ -209,4 +224,5 @@ src/
 | `npm run preview` | Wrangler でローカルプレビュー |
 | `npm run db:init` | D1 にスキーマ適用 |
 | `npm run db:migrate:private` | 既存のローカル D1 に非公開アプリ対応のマイグレーションを適用 |
+| `npm run db:migrate:library` | 既存のローカル D1 にカテゴリー・ステータスを追加 |
 | `npm run db:seed` | 技術スタック初期データ投入 |

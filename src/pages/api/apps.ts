@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { getApps, createApp, updateApp, deleteApp, getEncryptedGithubAccessToken, getTechStacks } from '../../lib/db';
 import { decryptSecret, getCurrentUser, isAdmin } from '../../lib/auth';
 import { detectTechFromGitHub, isPrivateGitHubRepository } from '../../lib/tech-detector';
+import { isAppCategory, isAppStatus } from '../../lib/catalog';
 
 async function mergeUsageRoles(
   db: import('@cloudflare/workers-types').D1Database,
@@ -72,6 +73,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
     thumbnail_url: data.thumbnail_url,
     thumbnail_type: data.thumbnail_type,
     is_private: data.is_private === true || privateRepository === true,
+    category: isAppCategory(data.category) ? data.category : 'other',
+    status: isAppStatus(data.status) ? data.status : 'live',
     tech_ids: techEntries ? undefined : data.tech_ids,
     tech_entries: techEntries || data.tech_entries,
   });
@@ -111,6 +114,8 @@ export const PUT: APIRoute = async ({ request, locals }) => {
     thumbnail_url: data.thumbnail_url,
     thumbnail_type: data.thumbnail_type,
     is_private: data.is_private === true || privateRepository === true,
+    category: isAppCategory(data.category) ? data.category : 'other',
+    status: isAppStatus(data.status) ? data.status : 'live',
     tech_ids: techEntries ? undefined : data.tech_ids,
     tech_entries: techEntries || data.tech_entries,
   }, user.userId);

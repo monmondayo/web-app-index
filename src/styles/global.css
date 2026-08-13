@@ -4,6 +4,133 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-slate-100 text-slate-900 antialiased;
+    font-family: Inter, "Noto Sans JP", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
+}
+
+@layer components {
+  .library-sidebar { scrollbar-width: none; }
+  .library-sidebar::-webkit-scrollbar { display: none; }
+
+  .sidebar-link {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-900 transition-colors whitespace-nowrap;
+  }
+  .sidebar-link.is-active { @apply text-white bg-violet-500/15 shadow-[inset_2px_0_0_#8b5cf6]; }
+  .sidebar-link svg { @apply w-4 h-4 flex-shrink-0; }
+  .sidebar-count { @apply ml-auto text-[10px] text-slate-600; }
+  .category-dot { @apply w-2 h-2 rounded-full flex-shrink-0; }
+  .category-dot-sky, .category-accent-sky { @apply bg-sky-500; }
+  .category-dot-fuchsia, .category-accent-fuchsia { @apply bg-fuchsia-500; }
+  .category-dot-violet, .category-accent-violet { @apply bg-violet-500; }
+  .category-dot-amber, .category-accent-amber { @apply bg-amber-500; }
+  .category-dot-emerald, .category-accent-emerald { @apply bg-emerald-500; }
+  .category-dot-indigo, .category-accent-indigo { @apply bg-indigo-500; }
+  .category-dot-slate, .category-accent-slate { @apply bg-slate-400; }
+
+  .library-topbar { @apply sticky top-0 z-30 h-16 px-4 sm:px-6 lg:px-10 flex items-center gap-3 bg-white/90 backdrop-blur-xl border-b border-slate-200/80; }
+  .library-search-input { @apply w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-violet-400 focus:ring-4 focus:ring-violet-100 transition; }
+  .primary-button { @apply h-10 inline-flex items-center justify-center gap-2 px-3.5 rounded-xl bg-slate-950 text-white text-xs font-medium hover:bg-violet-700 transition-colors shadow-sm whitespace-nowrap; }
+  .secondary-button { @apply h-10 inline-flex items-center justify-center gap-2 px-3.5 rounded-xl border border-slate-200 bg-white text-slate-600 text-xs font-medium hover:bg-slate-50 hover:text-slate-900 transition-colors whitespace-nowrap; }
+  .secondary-button.is-active { @apply border-violet-300 bg-violet-50 text-violet-700; }
+  .filter-select { @apply h-9 pl-3 pr-8 rounded-lg border border-slate-200 bg-white text-xs text-slate-600 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100; }
+  .view-mode-indicator { @apply w-9 h-9 rounded-lg bg-slate-950 text-white flex items-center justify-center; }
+  .eyebrow { @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-600; }
+  .category-accent { @apply w-2.5 h-2.5 rounded-full ring-4 ring-slate-200/80; }
+
+  .app-list { @apply bg-white border border-slate-200 rounded-2xl shadow-sm shadow-slate-200/50 overflow-hidden; }
+  .app-list-item { @apply relative border-b border-slate-100 last:border-b-0 transition-colors; }
+  .app-list-item.is-dragging { @apply opacity-50 bg-violet-50; }
+  .app-list-row { @apply relative min-h-[88px] grid items-center gap-4 px-4 sm:px-5 hover:bg-slate-50/80; grid-template-columns: minmax(280px,1.6fr) minmax(115px,.55fr) auto auto; }
+  .app-expand-btn:first-of-type { @apply min-w-0 flex items-center gap-4 py-3.5 text-left; }
+  .app-thumbnail { @apply w-[76px] h-[54px] flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center text-lg font-semibold text-white bg-gradient-to-br; }
+  .app-thumbnail img { @apply w-full h-full object-cover; }
+  .app-thumbnail-sky { @apply from-sky-400 to-blue-600; }
+  .app-thumbnail-fuchsia { @apply from-fuchsia-400 to-pink-600; }
+  .app-thumbnail-violet { @apply from-violet-400 to-indigo-600; }
+  .app-thumbnail-amber { @apply from-amber-400 to-orange-600; }
+  .app-thumbnail-emerald { @apply from-emerald-400 to-teal-600; }
+  .app-thumbnail-indigo { @apply from-indigo-400 to-blue-700; }
+  .app-thumbnail-slate { @apply from-slate-400 to-slate-700; }
+  .app-title { @apply block min-w-0 truncate text-sm sm:text-[15px] font-semibold text-slate-900; }
+  .app-description { @apply block mt-1 text-xs leading-5 text-slate-500 truncate; }
+  .private-label { @apply flex-shrink-0 px-1.5 py-0.5 rounded-md bg-amber-100 text-[9px] font-semibold text-amber-700; }
+  .app-tech-preview { @apply min-w-0 flex items-center gap-2 text-[11px] text-slate-500; }
+  .tech-icon-chip { @apply w-7 h-7 rounded-lg bg-white border-2 border-slate-100 flex items-center justify-center shadow-sm; }
+  .tech-icon-chip img { @apply w-3.5 h-3.5; }
+  .app-row-meta { @apply flex flex-col items-start gap-1.5; }
+  .status-label { @apply inline-flex items-center gap-1.5 text-[10px] font-medium whitespace-nowrap; }
+  .status-label > span { @apply w-1.5 h-1.5 rounded-full; }
+  .status-live { @apply text-emerald-700; } .status-live > span { @apply bg-emerald-500; }
+  .status-prototype { @apply text-amber-700; } .status-prototype > span { @apply bg-amber-500; }
+  .status-idea { @apply text-slate-500; } .status-idea > span { @apply bg-slate-400; }
+  .category-label { @apply text-[10px] text-slate-400 whitespace-nowrap; }
+  .app-row-actions { @apply flex items-center justify-end gap-3 text-[10px] font-medium text-slate-400 whitespace-nowrap; }
+  .app-row-actions a { @apply hover:text-violet-700 transition-colors; }
+  .app-chevron { @apply w-7 h-7 rounded-lg flex items-center justify-center hover:bg-slate-100 text-slate-400; }
+  .app-chevron svg { @apply w-4 h-4 transition-transform; }
+  .app-chevron[aria-expanded="true"] svg { @apply rotate-90; }
+  .drag-handle { @apply absolute left-2 top-1/2 -translate-y-1/2 z-10 w-7 h-9 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 cursor-grab shadow-sm; }
+  .drag-handle:not(.hidden) { @apply flex; }
+  .drag-handle svg { @apply w-4 h-4; }
+  .app-edit-actions { @apply absolute inset-y-0 right-0 items-center gap-2 px-5 bg-white/95 backdrop-blur; }
+  .app-edit-actions:not(.hidden) { @apply flex; }
+  .app-edit-actions button { @apply px-3 py-2 rounded-lg text-xs font-medium; }
+  .edit-btn { @apply bg-violet-50 text-violet-700 hover:bg-violet-100; }
+  .delete-btn { @apply bg-red-50 text-red-600 hover:bg-red-100; }
+  .app-details-panel { @apply px-5 sm:px-8 py-6 bg-slate-50 border-t border-slate-100; }
+  .tech-role-grid { @apply grid sm:grid-cols-2 xl:grid-cols-3 gap-3; }
+  .tech-role-item { @apply min-w-0 flex items-start gap-3 p-3 rounded-xl bg-white border border-slate-200; }
+  .tech-role-icon { @apply w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center flex-shrink-0; }
+  .tech-role-icon img { @apply w-5 h-5; }
+  .tech-role-item strong { @apply block text-xs font-semibold text-slate-800; }
+  .tech-role-name { @apply block mt-0.5 text-[10px] font-medium text-violet-600; }
+  .tech-role-description { @apply block mt-1 text-[10px] leading-4 text-slate-500 line-clamp-2; }
+
+  .empty-library { @apply py-20 px-6 text-center rounded-2xl border border-dashed border-slate-300 bg-white/50; }
+  .empty-library-icon { @apply mx-auto mb-4 w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center; }
+  .empty-library-icon svg { @apply w-6 h-6; }
+  .empty-library h2 { @apply text-sm font-semibold text-slate-800; }
+  .empty-library p { @apply mt-2 text-xs text-slate-500; }
+
+  .tech-summary-grid { @apply grid sm:grid-cols-2 xl:grid-cols-3 gap-3; }
+  .tech-summary-item { @apply flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-white text-left hover:border-violet-300 hover:shadow-sm transition; }
+  .tech-summary-item.is-active { @apply border-violet-400 ring-4 ring-violet-100; }
+  .tech-summary-item span:nth-child(2) { @apply min-w-0 flex-1; }
+  .tech-summary-item strong { @apply block text-xs font-semibold text-slate-800; }
+  .tech-summary-item small { @apply block mt-1 text-[10px] leading-4 text-slate-500; }
+  .tech-summary-item b { @apply text-lg font-semibold text-slate-300; }
+  .tech-catalog-list { @apply bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm; }
+  .tech-catalog-item { @apply border-b border-slate-100 last:border-b-0; }
+  .tech-catalog-item summary { @apply min-h-[76px] grid items-center gap-4 px-4 sm:px-5 cursor-pointer hover:bg-slate-50 list-none; grid-template-columns: 42px minmax(220px,1fr) 100px 60px 20px; }
+  .tech-catalog-item summary::-webkit-details-marker { display: none; }
+  .tech-catalog-icon { @apply w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center; }
+  .tech-catalog-icon img { @apply w-5 h-5; }
+  .tech-catalog-item summary strong { @apply block text-sm font-semibold text-slate-900; }
+  .tech-catalog-item summary span span { @apply block mt-1 text-[11px] text-slate-500 truncate; }
+  .tech-catalog-role { @apply text-[10px] font-medium text-violet-700 bg-violet-50 px-2 py-1 rounded-md text-center; }
+  .tech-usage-count { @apply text-[9px] text-slate-400 text-right; }
+  .tech-usage-count b { @apply block text-sm text-slate-700; }
+  .tech-catalog-chevron { @apply w-4 h-4 text-slate-400 transition-transform; }
+  .tech-catalog-item[open] .tech-catalog-chevron { @apply rotate-90; }
+  .tech-catalog-detail { @apply px-[70px] pb-5 pt-1 bg-slate-50; }
+  .used-app-link { @apply px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[10px] font-medium text-slate-600 hover:border-violet-300 hover:text-violet-700; }
+  body.edit-mode .app-list-row { @apply pl-12; }
+}
+
+@media (max-width: 900px) {
+  .app-list-row { grid-template-columns: minmax(250px, 1fr) auto auto; }
+  .app-tech-preview { display: none; }
+}
+
+@media (max-width: 640px) {
+  .app-list-row { min-height: 82px; padding-left: .75rem; padding-right: .75rem; gap: .5rem; grid-template-columns: minmax(0, 1fr) auto; }
+  .app-expand-btn:first-of-type { gap: .75rem; }
+  .app-thumbnail { width: 58px; height: 46px; border-radius: .65rem; }
+  .app-row-meta { display: none; }
+  .app-row-actions a { display: none; }
+  .app-description { max-width: 230px; }
+  .tech-catalog-item summary { grid-template-columns: 38px minmax(0,1fr) 45px 16px; gap: .65rem; padding-left: .75rem; padding-right: .75rem; }
+  .tech-catalog-role { display: none; }
+  .tech-catalog-detail { padding-left: 1rem; padding-right: 1rem; }
 }

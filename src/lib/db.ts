@@ -1,4 +1,5 @@
 type D1Database = import('@cloudflare/workers-types').D1Database;
+import type { AppCategory, AppStatus } from './catalog';
 
 export interface App {
   id: number;
@@ -10,6 +11,8 @@ export interface App {
   thumbnail_url: string | null;
   thumbnail_type: string;
   is_private: number;
+  category: AppCategory;
+  status: AppStatus;
   display_order: number;
   created_at: string;
   updated_at: string;
@@ -87,17 +90,18 @@ export async function getAppById(db: D1Database, id: number, viewerUserId?: numb
 
 export async function createApp(
   db: D1Database,
-  data: { user_id: number; title: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; is_private?: boolean; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> }
+  data: { user_id: number; title: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; is_private?: boolean; category?: AppCategory; status?: AppStatus; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> }
 ): Promise<number> {
   const maxOrder = await db.prepare('SELECT COALESCE(MAX(display_order), 0) as max_order FROM apps').first<{ max_order: number }>();
   const nextOrder = (maxOrder?.max_order ?? 0) + 1;
 
   const result = await db.prepare(
-    `INSERT INTO apps (user_id, title, description, site_url, github_url, thumbnail_url, thumbnail_type, is_private, display_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO apps (user_id, title, description, site_url, github_url, thumbnail_url, thumbnail_type, is_private, category, status, display_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     data.user_id, data.title, data.description || null, data.site_url || null,
-    data.github_url || null, data.thumbnail_url || null, data.thumbnail_type || 'auto', data.is_private ? 1 : 0, nextOrder
+    data.github_url || null, data.thumbnail_url || null, data.thumbnail_type || 'auto', data.is_private ? 1 : 0,
+    data.category || 'other', data.status || 'live', nextOrder
   ).run();
 
   const appId = result.meta.last_row_id as number;
@@ -116,7 +120,7 @@ export async function createApp(
 export async function updateApp(
   db: D1Database,
   id: number,
-  data: { title?: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; is_private?: boolean; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> },
+  data: { title?: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; is_private?: boolean; category?: AppCategory; status?: AppStatus; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> },
   ownerUserId?: number,
 ): Promise<void> {
   if (ownerUserId !== undefined) {
@@ -135,6 +139,8 @@ export async function updateApp(
   if (data.thumbnail_url !== undefined) { fields.push('thumbnail_url = ?'); values.push(data.thumbnail_url); }
   if (data.thumbnail_type !== undefined) { fields.push('thumbnail_type = ?'); values.push(data.thumbnail_type); }
   if (data.is_private !== undefined) { fields.push('is_private = ?'); values.push(data.is_private ? 1 : 0); }
+  if (data.category !== undefined) { fields.push('category = ?'); values.push(data.category); }
+  if (data.status !== undefined) { fields.push('status = ?'); values.push(data.status); }
 
   if (fields.length) {
     fields.push("updated_at = datetime('now')");
