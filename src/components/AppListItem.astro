@@ -42,7 +42,7 @@ const editData = admin ? JSON.stringify({
       </button>
     )}
 
-    <button type="button" class="app-expand-btn" aria-expanded="false" aria-controls={`app-details-${app.id}`}>
+    <button type="button" class="app-expand-btn app-primary-expand" aria-expanded="false" aria-controls={`app-details-${app.id}`}>
       <span class:list={['app-thumbnail', `app-thumbnail-${category.accent}`]}>
         {thumbnailUrl ? (
           <img src={thumbnailUrl} alt="" loading="lazy" />

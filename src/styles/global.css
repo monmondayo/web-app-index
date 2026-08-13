@@ -42,7 +42,7 @@
   .app-list-item { @apply relative border-b border-slate-100 last:border-b-0 transition-colors; }
   .app-list-item.is-dragging { @apply opacity-50 bg-violet-50; }
   .app-list-row { @apply relative min-h-[88px] grid items-center gap-4 px-4 sm:px-5 hover:bg-slate-50/80; grid-template-columns: minmax(280px,1.6fr) minmax(115px,.55fr) auto auto; }
-  .app-expand-btn:first-of-type { @apply min-w-0 flex items-center gap-4 py-3.5 text-left; }
+  .app-primary-expand { @apply min-w-0 flex items-center gap-4 py-3.5 text-left; }
   .app-thumbnail { @apply w-[76px] h-[54px] flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center text-lg font-semibold text-white bg-gradient-to-br; }
   .app-thumbnail img { @apply w-full h-full object-cover; }
   .app-thumbnail-sky { @apply from-sky-400 to-blue-600; }
@@ -125,7 +125,7 @@
 
 @media (max-width: 640px) {
   .app-list-row { min-height: 82px; padding-left: .75rem; padding-right: .75rem; gap: .5rem; grid-template-columns: minmax(0, 1fr) auto; }
-  .app-expand-btn:first-of-type { gap: .75rem; }
+  .app-primary-expand { gap: .75rem; }
   .app-thumbnail { width: 58px; height: 46px; border-radius: .65rem; }
   .app-row-meta { display: none; }
   .app-row-actions a { display: none; }
