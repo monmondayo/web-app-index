@@ -6,19 +6,33 @@ CREATE INDEX IF NOT EXISTS idx_apps_category ON apps(category);
 CREATE INDEX IF NOT EXISTS idx_apps_status ON apps(status);
 
 UPDATE apps SET category = 'maps'
-WHERE title IN ('RouteLoop', '訪問地マッパー (Google Timeline Location Mapper)', 'GPX Viewer', '名古屋マップ');
+WHERE title IN (
+  'RouteLoop',
+  '訪問地マッパー (Google Timeline Location Mapper)',
+  'GPX Viewer',
+  '名古屋マップ',
+  '愛知県犯罪統計データ',
+  '特異地点マップDB検索Viewer'
+);
 
 UPDATE apps SET category = 'creative'
 WHERE title IN ('サムネイル画像編集アプリ', '画像タイリングツール', 'Local Masking Tool', 'FlexiFocusCAM');
 
 UPDATE apps SET category = 'ai'
-WHERE title IN ('名古屋ばえスカウター (NAGOYA VIBE CHECK)', 'ACE-Step 1.5 — Music Generator', '自動BGM作成（３モデル）', 'Youtubeショート動画作成');
+WHERE title IN (
+  '名古屋ばえスカウター (NAGOYA VIBE CHECK)',
+  'ACE-Step 1.5 — Music Generator',
+  '自動BGM作成（３モデル）',
+  'Youtubeショート動画作成',
+  'Chapter Craft',
+  'AutoBGM Cloud'
+);
 
 UPDATE apps SET category = 'simulation'
-WHERE title IN ('【未作成】自動運転シミュレータ', '花火制作シミュレーター', '花火師体験シミュレータ');
+WHERE title IN ('【未作成】自動運転シミュレータ', '花火制作シミュレーター', '花火師体験シミュレータ', 'traffic-flow-sim');
 
 UPDATE apps SET category = 'utility'
-WHERE title IN ('腕時計トラッキング', '実質タダ電卓（Nagoya Vibe Edition）');
+WHERE title IN ('腕時計トラッキング', '実質タダ電卓（Nagoya Vibe Edition）', 'ライフログ管理');
 
 UPDATE apps SET category = 'dev'
 WHERE title = 'Web App Catalog';
