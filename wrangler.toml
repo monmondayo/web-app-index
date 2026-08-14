@@ -14,8 +14,8 @@ binding = "R2"
 bucket_name = "web-app-index-thumbnails"
 
 [vars]
-# Workersへ初回デプロイ後、実際の workers.dev またはカスタムドメインに変更します。
-SITE_URL = "https://web-app-index.<YOUR_WORKERS_SUBDOMAIN>.workers.dev"
+# カスタムドメインを設定した場合はそのURLに変更します。
+SITE_URL = "https://web-app-index.monmymail.workers.dev"
 ADMIN_GITHUB_USERNAME = "monmondayo"
 # Privateリポジトリも検出する場合だけ "true" に変更（GitHubの広い repo 権限を要求します）
 GITHUB_ENABLE_PRIVATE_REPOS = "false"
