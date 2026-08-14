@@ -1,187 +1,106 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import Header from '../../components/Header.astro';
-import TechBadge from '../../components/TechBadge.astro';
-import { getAppById } from '../../lib/db';
+import LibrarySidebar from '../../components/LibrarySidebar.astro';
+import { getAppById, getApps } from '../../lib/db';
 import { getCurrentUser } from '../../lib/auth';
+import { APP_CATEGORIES, APP_STATUSES, getTechRole, type AppCategory, type AppStatus } from '../../lib/catalog';
+import { TECH_DESCRIPTIONS, getTechIconSvg } from '../../lib/icons';
 
 const env = Astro.locals.runtime.env;
 const user = await getCurrentUser(Astro.request, env.JWT_SECRET);
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 const id = Number(Astro.params.id);
+const [app, allApps] = await Promise.all([
+  getAppById(env.DB, id, user?.userId),
+  getApps(env.DB, user?.userId),
+]);
+if (!app) return Astro.redirect('/');
 
-const app = await getAppById(env.DB, id, user?.userId);
-if (!app) {
-  return Astro.redirect('/');
-}
-
-function getThumbnailUrl() {
-  if (app!.thumbnail_url) return app!.thumbnail_url;
-  if (app!.site_url) return `https://image.thum.io/get/${app!.site_url}`;
-  return '';
-}
-
-const thumbnailUrl = getThumbnailUrl();
-
-const hasRoles = app.tech_stacks.some((t) => t.usage_role);
-const roleGroups: Record<string, typeof app.tech_stacks> = {};
-if (hasRoles) {
-  for (const tech of app.tech_stacks) {
-    const role = tech.usage_role || 'その他';
-    (roleGroups[role] = roleGroups[role] || []).push(tech);
-  }
-}
+const category = APP_CATEGORIES[app.category] || APP_CATEGORIES.other;
+const status = APP_STATUSES[app.status] || APP_STATUSES.live;
+const categoryCounts = Object.fromEntries(Object.keys(APP_CATEGORIES).map((key) => [key, allApps.filter((item) => item.category === key).length])) as Record<AppCategory, number>;
+const statusCounts = Object.fromEntries(Object.keys(APP_STATUSES).map((key) => [key, allApps.filter((item) => item.status === key).length])) as Record<AppStatus, number>;
+const thumbnailUrl = app.thumbnail_type === 'none' ? '' : app.thumbnail_url || (app.site_url ? `https://image.thum.io/get/width/1200/crop/675/${app.site_url}` : '');
 ---
-<Layout title={`${app.title} - Web App Catalog`}>
-  <Header user={user} />
+<Layout title={`${app.title} - App Library`}>
+  <div class="min-h-screen lg:flex bg-slate-100">
+    <LibrarySidebar user={user} active="apps" activeCategory={app.category} totalApps={allApps.length} categoryCounts={categoryCounts} statusCounts={statusCounts} />
+    <div class="min-w-0 flex-1">
+      <header class="library-topbar">
+        <a href={`/?category=${app.category}`} class="inline-flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-violet-700">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 18-6-6 6-6" /></svg>
+          {category.label}へ戻る
+        </a>
+      </header>
 
-  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <a href="/" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-      </svg>
-      一覧に戻る
-    </a>
-
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      {thumbnailUrl && (
-        <div class="aspect-video bg-gray-100 overflow-hidden">
-          <img src={thumbnailUrl} alt={app.title} class="w-full h-full object-cover" />
-        </div>
-      )}
-      <div class="p-6 sm:p-8">
-        <div class="flex items-center gap-3 mb-2">
-          <h1 class="text-3xl font-bold text-gray-900">{app.title}</h1>
-          {!!app.is_private && (
-            <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              非公開
-            </span>
-          )}
-        </div>
-        {app.description && (
-          <p class="text-gray-600 text-lg mb-6">{app.description}</p>
-        )}
-
-        <div class="flex flex-wrap gap-2 mb-6">
-          {app.tech_stacks.map((tech) => (
-            <TechBadge name={tech.name} slug={tech.slug} category={tech.category} color={tech.color} size="md" usageRole={tech.usage_role} />
-          ))}
+      <main class="px-4 sm:px-6 lg:px-10 py-7 lg:py-10 max-w-6xl mx-auto">
+        <div class="flex flex-wrap items-center gap-2 mb-4">
+          <span class:list={['category-accent', `category-accent-${category.accent}`]}></span>
+          <span class="text-xs font-medium text-slate-500">{category.label}</span>
+          <span class:list={['status-label', `status-${app.status}`, 'ml-2']}><span></span>{status.label}</span>
+          {!!app.is_private && <span class="private-label">非公開</span>}
         </div>
 
-        {hasRoles && (
-          <details class="mb-6">
-            <summary class="text-sm text-gray-500 cursor-pointer hover:text-gray-700 select-none">役割別に表示</summary>
-            <div class="mt-3 space-y-3">
-              {Object.entries(roleGroups).map(([role, techs]) => (
-                <div>
-                  <div class="text-xs font-medium text-gray-500 mb-1.5">{role}</div>
-                  <div class="flex flex-wrap gap-1.5">
-                    {techs.map((tech) => (
-                      <TechBadge name={tech.name} slug={tech.slug} category={tech.category} color={tech.color} usageRole={tech.usage_role} />
-                    ))}
+        <div class="grid lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)] gap-6">
+          <section class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+            {thumbnailUrl ? (
+              <div class="aspect-video bg-slate-200 overflow-hidden"><img src={thumbnailUrl} alt={app.title} class="w-full h-full object-cover" /></div>
+            ) : (
+              <div class:list={['aspect-video flex items-center justify-center text-7xl font-semibold text-white bg-gradient-to-br', `app-thumbnail-${category.accent}`]}>{app.title.charAt(0)}</div>
+            )}
+            <div class="p-6 sm:p-8">
+              <p class="eyebrow mb-3">Product</p>
+              <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-slate-950">{app.title}</h1>
+              <p class="mt-4 text-sm sm:text-base leading-7 text-slate-600">{app.description || '説明はまだ登録されていません。'}</p>
+              <div class="mt-7 flex flex-wrap gap-3">
+                {app.site_url && <a href={app.site_url} target="_blank" rel="noopener noreferrer" class="primary-button">サイトを開く ↗</a>}
+                {app.github_url && <a href={app.github_url} target="_blank" rel="noopener noreferrer" class="secondary-button">GitHub ↗</a>}
+              </div>
+            </div>
+          </section>
+
+          <aside class="space-y-4">
+            <div class="bg-slate-950 text-white rounded-3xl p-6 shadow-xl shadow-slate-300">
+              <p class="text-[10px] font-semibold uppercase tracking-[.18em] text-violet-300">Architecture</p>
+              <h2 class="mt-2 text-lg font-semibold">技術構成</h2>
+              <p class="mt-2 text-xs leading-5 text-slate-400">技術名だけでなく、このアプリで担当している役割を表示します。</p>
+              <div class="mt-6 space-y-3">
+                {app.tech_stacks.length ? app.tech_stacks.map((tech, index) => (
+                  <div class="relative flex items-start gap-3 pb-3 last:pb-0">
+                    {index < app.tech_stacks.length - 1 && <span class="absolute left-[17px] top-9 bottom-0 w-px bg-slate-700"></span>}
+                    <span class="relative z-10 w-9 h-9 rounded-xl bg-white flex items-center justify-center flex-shrink-0"><img src={getTechIconSvg(tech.slug, tech.color)} alt="" class="w-5 h-5" /></span>
+                    <span class="min-w-0 pt-0.5">
+                      <strong class="block text-xs font-semibold">{tech.name}</strong>
+                      <span class="block mt-0.5 text-[10px] text-violet-300">{getTechRole(tech.category, tech.usage_role)}</span>
+                    </span>
                   </div>
+                )) : <p class="text-xs text-slate-500">技術スタックは未登録です。</p>}
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        {app.tech_stacks.length > 0 && (
+          <section class="mt-8">
+            <div class="mb-4">
+              <p class="eyebrow mb-2">Technology notes</p>
+              <h2 class="text-xl font-semibold text-slate-900">それぞれの技術について</h2>
+            </div>
+            <div class="tech-role-grid">
+              {app.tech_stacks.map((tech) => (
+                <div class="tech-role-item !p-4">
+                  <span class="tech-role-icon"><img src={getTechIconSvg(tech.slug, tech.color)} alt="" /></span>
+                  <span class="min-w-0">
+                    <strong>{tech.name}</strong>
+                    <span class="tech-role-name">{getTechRole(tech.category, tech.usage_role)}</span>
+                    <span class="tech-role-description !line-clamp-none">{TECH_DESCRIPTIONS[tech.name] || 'このアプリを構成する技術のひとつです。'}</span>
+                  </span>
                 </div>
               ))}
             </div>
-          </details>
+          </section>
         )}
-
-        <div class="flex items-center gap-4">
-          {app.site_url && (
-            <a
-              href={app.site_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              サイトを開く
-            </a>
-          )}
-          {app.github_url && (
-            <a
-              href={app.github_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              GitHubリポジトリ
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <!-- Tech popover (shared) -->
-  <div id="tech-popover" class="fixed z-50 hidden pointer-events-none">
-    <div class="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg max-w-xs pointer-events-auto">
-      <div id="tech-popover-name" class="font-semibold mb-0.5"></div>
-      <div id="tech-popover-role" class="text-yellow-300 mb-0.5 hidden"></div>
-      <div id="tech-popover-desc" class="text-gray-300 leading-relaxed"></div>
+      </main>
     </div>
   </div>
 </Layout>
-
-<script>
-  // Tech badge popover
-  const popover = document.getElementById('tech-popover')!;
-  const popoverName = document.getElementById('tech-popover-name')!;
-  const popoverRole = document.getElementById('tech-popover-role')!;
-  const popoverDesc = document.getElementById('tech-popover-desc')!;
-
-  function showPopover(badge: HTMLElement) {
-    const name = badge.dataset.techName || '';
-    const desc = badge.dataset.techDesc || '';
-    const role = badge.dataset.techRole || '';
-    if (!desc && !role) return;
-
-    popoverName.textContent = name;
-    if (role) {
-      popoverRole.textContent = role;
-      popoverRole.classList.remove('hidden');
-    } else {
-      popoverRole.classList.add('hidden');
-    }
-    popoverDesc.textContent = desc;
-    popover.classList.remove('hidden');
-
-    const rect = badge.getBoundingClientRect();
-    const popoverRect = popover.getBoundingClientRect();
-
-    let top = rect.bottom + 6;
-    let left = rect.left + rect.width / 2 - popoverRect.width / 2;
-
-    if (left < 8) left = 8;
-    if (left + popoverRect.width > window.innerWidth - 8) {
-      left = window.innerWidth - popoverRect.width - 8;
-    }
-    if (top + popoverRect.height > window.innerHeight - 8) {
-      top = rect.top - popoverRect.height - 6;
-    }
-
-    popover.style.top = `${top}px`;
-    popover.style.left = `${left}px`;
-  }
-
-  function hidePopover() {
-    popover.classList.add('hidden');
-  }
-
-  document.addEventListener('click', (e) => {
-    const badge = (e.target as HTMLElement).closest('.tech-badge') as HTMLElement | null;
-    if (badge) {
-      e.stopPropagation();
-      const isVisible = !popover.classList.contains('hidden');
-      const currentName = popoverName.textContent;
-      hidePopover();
-      if (!isVisible || currentName !== badge.dataset.techName) {
-        showPopover(badge);
-      }
-    } else if (!(e.target as HTMLElement).closest('#tech-popover')) {
-      hidePopover();
-    }
-  });
-</script>

@@ -1,0 +1,119 @@
+---
+import type { AppWithTech } from '../lib/db';
+import { APP_CATEGORIES, APP_STATUSES, getTechRole } from '../lib/catalog';
+import { TECH_DESCRIPTIONS, getTechIconSvg } from '../lib/icons';
+
+interface Props { app: AppWithTech; admin?: boolean; }
+const { app, admin = false } = Astro.props;
+const category = APP_CATEGORIES[app.category] || APP_CATEGORIES.other;
+const status = APP_STATUSES[app.status] || APP_STATUSES.live;
+const thumbnailUrl = app.thumbnail_type === 'none'
+  ? ''
+  : app.thumbnail_url || (app.site_url ? `https://image.thum.io/get/width/320/crop/180/${app.site_url}` : '');
+const visibleTech = app.tech_stacks.slice(0, 3);
+const remainingTech = Math.max(0, app.tech_stacks.length - visibleTech.length);
+const searchText = [app.title, app.description, category.label, status.label, ...app.tech_stacks.flatMap((tech) => [tech.name, tech.usage_role])]
+  .filter(Boolean).join(' ').toLowerCase();
+const editData = admin ? JSON.stringify({
+  id: app.id,
+  title: app.title || '',
+  description: app.description || '',
+  site_url: app.site_url || '',
+  github_url: app.github_url || '',
+  thumbnail_url: app.thumbnail_url || '',
+  thumbnail_type: app.thumbnail_type || 'auto',
+  is_private: !!app.is_private,
+  category: app.category,
+  status: app.status,
+  tech_ids: app.tech_stacks.map((tech) => tech.id),
+}) : '';
+---
+<article
+  class="app-list-item group"
+  data-app-id={app.id}
+  data-search={searchText}
+  data-category={app.category}
+  data-status={app.status}
+>
+  <div class="app-list-row">
+    {admin && (
+      <button type="button" class="drag-handle edit-mode-ui hidden" aria-label="並び替え">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9h8M8 15h8" /></svg>
+      </button>
+    )}
+
+    <button type="button" class="app-expand-btn app-primary-expand" aria-expanded="false" aria-controls={`app-details-${app.id}`}>
+      <span class:list={['app-thumbnail', `app-thumbnail-${category.accent}`]}>
+        {thumbnailUrl ? (
+          <img src={thumbnailUrl} alt="" loading="lazy" />
+        ) : (
+          <span>{app.title.charAt(0)}</span>
+        )}
+      </span>
+      <span class="min-w-0 text-left">
+        <span class="flex items-center gap-2 min-w-0">
+          <strong class="app-title">{app.title}</strong>
+          {!!app.is_private && <span class="private-label">非公開</span>}
+        </span>
+        <span class="app-description">{app.description || '説明はまだ登録されていません'}</span>
+      </span>
+    </button>
+
+    <div class="app-tech-preview" aria-label="主要技術">
+      <div class="flex -space-x-1.5">
+        {visibleTech.map((tech) => (
+          <span class="tech-icon-chip" title={tech.name}>
+            <img src={getTechIconSvg(tech.slug, tech.color)} alt="" loading="lazy" />
+          </span>
+        ))}
+      </div>
+      <span class="hidden xl:inline truncate">{visibleTech[0]?.name || '技術未登録'}{remainingTech > 0 ? ` +${remainingTech}` : ''}</span>
+    </div>
+
+    <div class="app-row-meta">
+      <span class:list={['status-label', `status-${app.status}`]}><span></span>{status.label}</span>
+      <span class="category-label">{category.shortLabel}</span>
+    </div>
+
+    <div class="app-row-actions">
+      {app.site_url && <a href={app.site_url} target="_blank" rel="noopener noreferrer" aria-label={`${app.title}を開く`}>サイト ↗</a>}
+      {app.github_url && <a href={app.github_url} target="_blank" rel="noopener noreferrer" aria-label={`${app.title}のリポジトリを開く`}>GitHub ↗</a>}
+      <button type="button" class="app-chevron app-expand-btn" aria-expanded="false" aria-controls={`app-details-${app.id}`} aria-label="技術構成を表示">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6" /></svg>
+      </button>
+    </div>
+
+    {admin && (
+      <div class="edit-mode-ui hidden app-edit-actions">
+        <button type="button" class="edit-btn" data-edit-app={editData}>編集</button>
+        <button type="button" class="delete-btn" data-delete-app-id={app.id}>削除</button>
+      </div>
+    )}
+  </div>
+
+  <div id={`app-details-${app.id}`} class="app-details-panel hidden">
+    <div class="flex items-center justify-between gap-4 mb-4">
+      <div>
+        <p class="eyebrow">Technology map</p>
+        <h3 class="text-sm font-semibold text-slate-900">このアプリでの技術の役割</h3>
+      </div>
+      <a href={`/app/${app.id}`} class="text-xs font-medium text-indigo-600 hover:text-indigo-800">詳細ページを見る →</a>
+    </div>
+    {app.tech_stacks.length ? (
+      <div class="tech-role-grid">
+        {app.tech_stacks.map((tech) => (
+          <div class="tech-role-item">
+            <span class="tech-role-icon"><img src={getTechIconSvg(tech.slug, tech.color)} alt="" loading="lazy" /></span>
+            <span class="min-w-0">
+              <strong>{tech.name}</strong>
+              <span class="tech-role-name">{getTechRole(tech.category, tech.usage_role)}</span>
+              <span class="tech-role-description">{TECH_DESCRIPTIONS[tech.name] || 'このアプリを構成する技術のひとつです'}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p class="text-sm text-slate-500">技術スタックはまだ登録されていません。</p>
+    )}
+  </div>
+</article>

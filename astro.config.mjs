@@ -12,6 +12,6 @@ export default defineConfig({
   }),
   integrations: [
     preact({ compat: true }),
-    tailwind(),
+    tailwind({ applyBaseStyles: false }),
   ],
 });
