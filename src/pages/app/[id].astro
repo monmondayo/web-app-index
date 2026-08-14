@@ -65,7 +65,7 @@ const nextUrl = nextApp ? `/app/${nextApp.id}` : '';
           <span class:list={['category-accent', `category-accent-${category.accent}`]}></span>
           <span class="text-xs font-medium text-slate-500">{category.label}</span>
           <span class:list={['status-label', `status-${app.status}`, 'ml-2']}><span></span>{status.label}</span>
-          {!!app.is_private && <span class="private-label">非公開</span>}
+          {!!app.is_private && <span class="private-label">{app.is_locked ? 'Private・概要公開' : 'Private'}</span>}
         </div>
 
         <div class="grid lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)] gap-6">
@@ -83,6 +83,18 @@ const nextUrl = nextApp ? `/app/${nextApp.id}` : '';
                 {app.site_url && <a href={app.site_url} target="_blank" rel="noopener noreferrer" class="primary-button">サイトを開く ↗</a>}
                 {app.github_url && <a href={app.github_url} target="_blank" rel="noopener noreferrer" class="secondary-button">GitHub ↗</a>}
               </div>
+              {app.is_locked && (
+                <div class="private-access-note">
+                  <span class="private-access-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M7 10V8a5 5 0 0110 0v2m-9 0h8a2 2 0 012 2v7H6v-7a2 2 0 012-2z" /></svg>
+                  </span>
+                  <span class="min-w-0 flex-1">
+                    <strong>Privateアプリの概要を公開中</strong>
+                    <small>サイトとGitHubへのリンクは、所有者としてログインすると表示されます。技術構成はこのまま閲覧できます。</small>
+                  </span>
+                  <a href="/api/auth/login" class="secondary-button">ログイン</a>
+                </div>
+              )}
             </div>
           </section>
 

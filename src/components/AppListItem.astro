@@ -53,7 +53,7 @@ const editData = admin ? JSON.stringify({
       <span class="min-w-0 text-left">
         <span class="flex items-center gap-2 min-w-0">
           <strong class="app-title">{app.title}</strong>
-          {!!app.is_private && <span class="private-label">非公開</span>}
+          {!!app.is_private && <span class="private-label">{app.is_locked ? 'Private・概要公開' : 'Private'}</span>}
         </span>
         <span class="app-description">{app.description || '説明はまだ登録されていません'}</span>
       </span>
