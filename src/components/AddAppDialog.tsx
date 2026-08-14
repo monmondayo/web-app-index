@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import TechSelector from './TechSelector';
 import { APP_CATEGORIES, APP_STATUSES, type AppCategory, type AppStatus } from '../lib/catalog';
+import { normalizeYouTubeUrl } from '../lib/video';
 
 interface TechStack {
   id: number;
@@ -25,6 +26,7 @@ interface Props {
     description: string;
     site_url: string;
     github_url: string;
+    video_url: string;
     thumbnail_url: string;
     is_private: boolean;
     thumbnail_type: string;
@@ -43,6 +45,7 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
   const [description, setDescription] = useState(editApp?.description || '');
   const [siteUrl, setSiteUrl] = useState(editApp?.site_url || '');
   const [githubUrl, setGithubUrl] = useState(editApp?.github_url || '');
+  const [videoUrl, setVideoUrl] = useState(editApp?.video_url || '');
   const [thumbnailUrl, setThumbnailUrl] = useState(editApp?.thumbnail_url || '');
   const [isPrivate, setIsPrivate] = useState(editApp?.is_private || false);
   const [category, setCategory] = useState<AppCategory>(editApp?.category || 'other');
@@ -187,6 +190,10 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
       setError('タイトルを入力してください');
       return;
     }
+    if (videoUrl.trim() && !normalizeYouTubeUrl(videoUrl)) {
+      setError('紹介動画には有効なYouTube URLを入力してください');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -198,6 +205,7 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
         description: description.trim(),
         site_url: siteUrl.trim(),
         github_url: githubUrl.trim(),
+        video_url: videoUrl.trim(),
         thumbnail_url: thumbnailUrl.trim(),
         thumbnail_type: thumbnailType,
         is_private: isPrivate,
@@ -332,6 +340,20 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
             </div>
           </div>
 
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">紹介動画URL（YouTube）</label>
+            <input
+              type="url"
+              value={videoUrl}
+              onInput={(e) => setVideoUrl((e.target as HTMLInputElement).value)}
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+              placeholder="https://youtu.be/xxxxxxxxxxx"
+            />
+            <p class="mt-2 text-xs leading-5 text-gray-500">
+              YouTubeの公開・限定公開URLに対応しています。限定公開でも、この詳細ページを見た人は再生できるため、非公開情報を含めないでください。
+            </p>
+          </div>
+
           <label class="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer">
             <input
               type="checkbox"
@@ -341,7 +363,7 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
             />
             <span>
               <span class="block text-sm font-medium text-gray-800">Privateアプリとして登録</span>
-              <span class="mt-0.5 block text-xs text-gray-500">概要・サムネイル・技術構成は公開し、サイトURLとGitHub URLはログイン中の自分だけに表示します。GitHub が private の場合は自動で有効になります。</span>
+              <span class="mt-0.5 block text-xs text-gray-500">概要・サムネイル・紹介動画・技術構成は公開し、サイトURLとGitHub URLはログイン中の自分だけに表示します。GitHub が private の場合は自動で有効になります。</span>
             </span>
           </label>
 

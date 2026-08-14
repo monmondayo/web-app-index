@@ -55,6 +55,7 @@
   .app-title { @apply block min-w-0 truncate text-sm sm:text-[15px] font-semibold text-slate-900; }
   .app-description { @apply block mt-1 text-xs leading-5 text-slate-500 truncate; }
   .private-label { @apply flex-shrink-0 px-1.5 py-0.5 rounded-md bg-amber-100 text-[9px] font-semibold text-amber-700; }
+  .video-label { @apply flex-shrink-0 px-1.5 py-0.5 rounded-md bg-red-50 text-[9px] font-semibold text-red-600; }
   .private-access-note { @apply mt-7 flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl border border-amber-200 bg-amber-50; }
   .private-access-icon { @apply w-10 h-10 flex-shrink-0 inline-flex items-center justify-center rounded-xl bg-amber-100 text-amber-700; }
   .private-access-icon svg { @apply w-5 h-5; }
@@ -121,6 +122,13 @@
   .tech-catalog-detail { @apply px-[70px] pb-5 pt-1 bg-slate-50; }
   .used-app-link { @apply px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[10px] font-medium text-slate-600 hover:border-violet-300 hover:text-violet-700; }
   .detail-step-nav { @apply ml-auto flex items-center gap-2; }
+  .detail-media { @apply relative aspect-video overflow-hidden bg-slate-950; }
+  .detail-media-panel { @apply w-full h-full; }
+  .detail-media-panel img, .detail-media-panel iframe { @apply block w-full h-full border-0 object-cover; }
+  .detail-media-tabs { @apply absolute z-10 top-3 left-3 flex items-center gap-1 rounded-xl border border-white/15 bg-slate-950/75 p-1 shadow-lg backdrop-blur-md; }
+  .detail-media-tabs button { @apply h-8 inline-flex items-center gap-1.5 rounded-lg px-2.5 text-[10px] font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400; }
+  .detail-media-tabs button[aria-selected="true"] { @apply bg-white text-slate-950 shadow-sm; }
+  .detail-media-tabs svg { @apply w-3.5 h-3.5; }
   .detail-step-count { @apply min-w-[58px] text-center text-[10px] font-semibold tracking-[0.12em] text-slate-400; }
   .detail-step-link { @apply w-9 h-9 inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-colors; }
   .detail-step-link svg { @apply w-4 h-4; }

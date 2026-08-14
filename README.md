@@ -16,7 +16,7 @@
 ## 機能
 
 - GitHub OAuth ログイン
-- 公開／Privateアプリの登録（Privateでも概要・サムネイル・技術構成は公開し、サイト／GitHubリンクは所有者のログイン中のみ表示）
+- 公開／Privateアプリの登録（Privateでも概要・サムネイル・紹介動画・技術構成は公開し、サイト／GitHubリンクは所有者のログイン中のみ表示）
 - 非公開 GitHub リポジトリからの技術スタック検出
 - 目的別カテゴリーと公開状態によるライブラリ型ナビゲーション
 - リスト表示、横断検索、技術構成の展開表示
@@ -25,6 +25,7 @@
 - GitHub URL から技術スタックを自動検出 (package.json, requirements.txt, go.mod, Cargo.toml, README.md, Dockerfile)
 - 登録・更新時に技術スタックの利用用途 (usage_role) を自動付与
 - サムネイル自動取得 (thum.io) または手動アップロード (R2)
+- YouTube公開・限定公開URLによる紹介動画（詳細ページでサムネイルと切り替えて再生・停止・シーク）
 - 技術スタックのカテゴリ別フィルター・検索付きセレクター
 - レスポンシブ 3 列グリッドレイアウト
 
@@ -111,6 +112,12 @@ npm run db:migrate:private
 npm run db:migrate:library
 ```
 
+紹介動画対応前の既存DBには、続けて次のマイグレーションも適用する:
+
+```bash
+npm run db:migrate:video
+```
+
 ### 5. 開発サーバー起動
 
 ```bash
@@ -174,6 +181,12 @@ npx wrangler d1 execute web-app-index-db --remote --file=migrations/0001_private
 npx wrangler d1 execute web-app-index-db --remote --file=migrations/0002_library_navigation.sql
 ```
 
+紹介動画URLを保存するカラムを追加する:
+
+```bash
+npx wrangler d1 execute web-app-index-db --remote --file=migrations/0004_app_video.sql
+```
+
 `--remote` を付けることで本番の D1 に対して実行されます。
 
 #### 5. GitHub OAuth の callback URL 追加
@@ -200,6 +213,7 @@ src/
 │   ├── db.ts              # D1 ヘルパー
 │   ├── auth.ts            # JWT 認証
 │   ├── tech-detector.ts   # GitHub からの技術検出
+│   ├── video.ts           # YouTube URLの検証・埋め込みURL生成
 │   └── icons.ts           # Simple Icons マッピング
 ├── pages/
 │   ├── index.astro        # カタログ一覧
@@ -226,4 +240,5 @@ src/
 | `npm run db:migrate:private` | 既存のローカル D1 に非公開アプリ対応のマイグレーションを適用 |
 | `npm run db:migrate:library` | 既存のローカル D1 にカテゴリー・ステータスを追加 |
 | `npm run db:migrate:tech` | 技術未登録アプリへ検出済みの技術構成を補完 |
+| `npm run db:migrate:video` | 既存DBに紹介動画URLカラムを追加 |
 | `npm run db:seed` | 技術スタック初期データ投入 |

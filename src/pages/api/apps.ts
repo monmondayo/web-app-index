@@ -3,6 +3,22 @@ import { getApps, createApp, updateApp, deleteApp, getEncryptedGithubAccessToken
 import { decryptSecret, getCurrentUser, isAdmin } from '../../lib/auth';
 import { detectTechFromGitHub, isPrivateGitHubRepository } from '../../lib/tech-detector';
 import { isAppCategory, isAppStatus } from '../../lib/catalog';
+import { normalizeYouTubeUrl } from '../../lib/video';
+
+function parseVideoUrl(data: Record<string, unknown>): { videoUrl: string | null; error?: Response } {
+  const rawVideoUrl = typeof data.video_url === 'string' ? data.video_url.trim() : '';
+  const videoUrl = normalizeYouTubeUrl(rawVideoUrl);
+  if (rawVideoUrl && !videoUrl) {
+    return {
+      videoUrl: null,
+      error: new Response(JSON.stringify({ error: '紹介動画には有効なYouTube URLを入力してください' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    };
+  }
+  return { videoUrl };
+}
 
 async function mergeUsageRoles(
   db: import('@cloudflare/workers-types').D1Database,
@@ -54,7 +70,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
-  const data = await request.json();
+  const data = await request.json() as Record<string, any>;
+  const { videoUrl, error: videoError } = parseVideoUrl(data);
+  if (videoError) return videoError;
   const encryptedToken = await getEncryptedGithubAccessToken(env.DB, user.userId);
   const accessToken = encryptedToken ? await decryptSecret(encryptedToken, env.JWT_SECRET) : null;
   const ghCreds = accessToken
@@ -70,6 +88,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     description: data.description,
     site_url: data.site_url,
     github_url: data.github_url,
+    video_url: videoUrl || undefined,
     thumbnail_url: data.thumbnail_url,
     thumbnail_type: data.thumbnail_type,
     is_private: data.is_private === true || privateRepository === true,
@@ -92,10 +111,12 @@ export const PUT: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
-  const data = await request.json();
+  const data = await request.json() as Record<string, any>;
   if (!data.id) {
     return new Response(JSON.stringify({ error: 'Missing app id' }), { status: 400 });
   }
+  const { videoUrl, error: videoError } = parseVideoUrl(data);
+  if (videoError) return videoError;
 
   const encryptedToken = await getEncryptedGithubAccessToken(env.DB, user.userId);
   const accessToken = encryptedToken ? await decryptSecret(encryptedToken, env.JWT_SECRET) : null;
@@ -111,6 +132,7 @@ export const PUT: APIRoute = async ({ request, locals }) => {
     description: data.description,
     site_url: data.site_url,
     github_url: data.github_url,
+    video_url: videoUrl || '',
     thumbnail_url: data.thumbnail_url,
     thumbnail_type: data.thumbnail_type,
     is_private: data.is_private === true || privateRepository === true,

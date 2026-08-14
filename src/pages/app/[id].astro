@@ -5,6 +5,7 @@ import { getAppById, getApps } from '../../lib/db';
 import { getCurrentUser } from '../../lib/auth';
 import { APP_CATEGORIES, APP_STATUSES, getTechRole, type AppCategory, type AppStatus } from '../../lib/catalog';
 import { TECH_DESCRIPTIONS, getTechIconSvg } from '../../lib/icons';
+import { getYouTubeEmbedUrl } from '../../lib/video';
 
 const env = Astro.locals.runtime.env;
 const user = await getCurrentUser(Astro.request, env.JWT_SECRET);
@@ -21,6 +22,7 @@ const status = APP_STATUSES[app.status] || APP_STATUSES.live;
 const categoryCounts = Object.fromEntries(Object.keys(APP_CATEGORIES).map((key) => [key, allApps.filter((item) => item.category === key).length])) as Record<AppCategory, number>;
 const statusCounts = Object.fromEntries(Object.keys(APP_STATUSES).map((key) => [key, allApps.filter((item) => item.status === key).length])) as Record<AppStatus, number>;
 const thumbnailUrl = app.thumbnail_type === 'none' ? '' : app.thumbnail_url || (app.site_url ? `https://image.thum.io/get/width/1200/crop/675/${app.site_url}` : '');
+const videoEmbedUrl = getYouTubeEmbedUrl(app.video_url);
 const currentIndex = allApps.findIndex((item) => item.id === app.id);
 const previousApp = currentIndex > 0 ? allApps[currentIndex - 1] : null;
 const nextApp = currentIndex >= 0 && currentIndex < allApps.length - 1 ? allApps[currentIndex + 1] : null;
@@ -71,11 +73,38 @@ const emptyTechLabel = app.status === 'idea' ? '技術選定中です。' : '技
 
         <div class="grid lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)] gap-6">
           <section class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-            {thumbnailUrl ? (
-              <div class="aspect-video bg-slate-200 overflow-hidden"><img src={thumbnailUrl} alt={app.title} class="w-full h-full object-cover" /></div>
-            ) : (
-              <div class:list={['aspect-video flex items-center justify-center text-7xl font-semibold text-white bg-gradient-to-br', `app-thumbnail-${category.accent}`]}>{app.title.charAt(0)}</div>
-            )}
+            <div class="detail-media">
+              {videoEmbedUrl && (
+                <div class="detail-media-tabs" role="tablist" aria-label="紹介メディアの切り替え">
+                  <button type="button" role="tab" aria-selected="true" aria-controls="thumbnail-panel" data-media-tab="thumbnail">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m4 16 4.6-4.6a2 2 0 0 1 2.8 0L16 16m-2-2 1.6-1.6a2 2 0 0 1 2.8 0L20 14m-1-8H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Zm-7 3h.01" /></svg>
+                    サムネイル
+                  </button>
+                  <button type="button" role="tab" aria-selected="false" aria-controls="video-panel" data-media-tab="video">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m9 8 7 4-7 4V8Z" /><circle cx="12" cy="12" r="9" stroke-width="1.8" /></svg>
+                    紹介動画
+                  </button>
+                </div>
+              )}
+              <div id="thumbnail-panel" class="detail-media-panel" role={videoEmbedUrl ? 'tabpanel' : undefined} data-media-panel="thumbnail">
+                {thumbnailUrl ? (
+                  <img src={thumbnailUrl} alt={`${app.title}のサムネイル`} />
+                ) : (
+                  <div class:list={['w-full h-full flex items-center justify-center text-7xl font-semibold text-white bg-gradient-to-br', `app-thumbnail-${category.accent}`]}>{app.title.charAt(0)}</div>
+                )}
+              </div>
+              {videoEmbedUrl && (
+                <div id="video-panel" class="detail-media-panel" role="tabpanel" data-media-panel="video" hidden>
+                  <iframe
+                    title={`${app.title}の紹介動画`}
+                    data-video-frame
+                    data-video-src={videoEmbedUrl}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen
+                  ></iframe>
+                </div>
+              )}
+            </div>
             <div class="p-6 sm:p-8">
               <p class="eyebrow mb-3">Product</p>
               <h1 class="text-3xl sm:text-4xl font-semibold tracking-tight text-slate-950">{app.title}</h1>
@@ -91,7 +120,7 @@ const emptyTechLabel = app.status === 'idea' ? '技術選定中です。' : '技
                   </span>
                   <span class="min-w-0 flex-1">
                     <strong>Privateアプリの概要を公開中</strong>
-                    <small>サイトとGitHubへのリンクは、所有者としてログインすると表示されます。技術構成はこのまま閲覧できます。</small>
+                    <small>サイトとGitHubへのリンクは、所有者としてログインすると表示されます。紹介動画と技術構成はこのまま閲覧できます。</small>
                   </span>
                   <a href="/api/auth/login" class="secondary-button">ログイン</a>
                 </div>
@@ -166,6 +195,41 @@ const emptyTechLabel = app.status === 'idea' ? '技術選定中です。' : '技
 
 <script>
   const detail = document.getElementById('app-detail');
+  const mediaTabs = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-media-tab]'));
+  const mediaPanels = Array.from(document.querySelectorAll<HTMLElement>('[data-media-panel]'));
+  const videoFrame = document.querySelector<HTMLIFrameElement>('[data-video-frame]');
+
+  function activateMedia(name: string) {
+    mediaTabs.forEach((tab) => {
+      const isActive = tab.dataset.mediaTab === name;
+      tab.setAttribute('aria-selected', String(isActive));
+      tab.tabIndex = isActive ? 0 : -1;
+    });
+    mediaPanels.forEach((panel) => { panel.hidden = panel.dataset.mediaPanel !== name; });
+
+    if (videoFrame) {
+      if (name === 'video' && !videoFrame.src) {
+        videoFrame.src = videoFrame.dataset.videoSrc || '';
+      } else if (name !== 'video' && videoFrame.src) {
+        videoFrame.removeAttribute('src');
+      }
+    }
+  }
+
+  mediaTabs.forEach((tab) => {
+    tab.addEventListener('click', () => activateMedia(tab.dataset.mediaTab || 'thumbnail'));
+    tab.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      event.stopPropagation();
+      const currentIndex = mediaTabs.indexOf(tab);
+      const offset = event.key === 'ArrowRight' ? 1 : -1;
+      const nextTab = mediaTabs[(currentIndex + offset + mediaTabs.length) % mediaTabs.length];
+      activateMedia(nextTab.dataset.mediaTab || 'thumbnail');
+      nextTab.focus();
+    });
+  });
+
   document.addEventListener('keydown', (event) => {
     if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
     const target = event.target as HTMLElement | null;

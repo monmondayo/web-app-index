@@ -21,6 +21,7 @@ const editData = admin ? JSON.stringify({
   description: app.description || '',
   site_url: app.site_url || '',
   github_url: app.github_url || '',
+  video_url: app.video_url || '',
   thumbnail_url: app.thumbnail_url || '',
   thumbnail_type: app.thumbnail_type || 'auto',
   is_private: !!app.is_private,
@@ -55,6 +56,7 @@ const editData = admin ? JSON.stringify({
         <span class="flex items-center gap-2 min-w-0">
           <strong class="app-title">{app.title}</strong>
           {!!app.is_private && <span class="private-label">{app.is_locked ? 'Private・概要公開' : 'Private'}</span>}
+          {app.video_url && <span class="video-label">紹介動画</span>}
         </span>
         <span class="app-description">{app.description || '説明はまだ登録されていません'}</span>
       </span>

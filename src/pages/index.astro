@@ -273,7 +273,7 @@ const pageDescription = activeCategory !== 'all'
     const dialogRoot = document.getElementById('dialog-root');
     interface EditAppData {
       id: number; title: string; description: string; site_url: string; github_url: string;
-      thumbnail_url: string; thumbnail_type: string; is_private: boolean;
+      video_url: string; thumbnail_url: string; thumbnail_type: string; is_private: boolean;
       category: AppCategory; status: AppStatus; tech_ids: number[];
     }
     function renderDialog(open: boolean, editApp?: EditAppData) {
