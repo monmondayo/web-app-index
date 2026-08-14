@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "wrangler pages dev dist",
+    "preview": "astro preview",
+    "deploy": "npm run build && wrangler deploy",
     "astro": "astro",
     "db:init": "wrangler d1 execute web-app-index-db --local --file=schema.sql",
     "db:migrate:private": "wrangler d1 execute web-app-index-db --local --file=migrations/0001_private_apps.sql",

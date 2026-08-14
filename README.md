@@ -6,7 +6,7 @@
 
 - **Framework**: Astro 7 (SSR)
 - **UI**: Preact Islands + Tailwind CSS
-- **Hosting**: Cloudflare Pages
+- **Hosting**: Cloudflare Workers
 - **Database**: Cloudflare D1 (SQLite)
 - **画像保存**: Cloudflare R2
 - **認証**: GitHub OAuth + JWT Cookie
@@ -51,7 +51,7 @@
 
 以前のバージョンで `repo` を許可済みの場合、設定を `false` にしただけではGitHub側の許可は縮小されません。GitHubの Settings → Applications → Authorized OAuth Apps で本アプリの許可を一度取り消し、再ログインしてください。再ログイン時にD1上の旧アクセストークンも削除されます。
 
-本番デプロイ後は Homepage URL と callback URL を `https://your-app.pages.dev` に変更する。
+本番デプロイ後は Homepage URL と callback URL を実際の `workers.dev` またはカスタムドメインに変更する。
 
 ### 1. 依存関係のインストール
 
@@ -76,7 +76,7 @@ npx wrangler r2 bucket create web-app-index-thumbnails
 ### 3. 環境変数の設定
 
 シークレット情報は `.dev.vars` に記載する（`.gitignore` 対象のため git にコミットされない）。
-`SITE_URL` はシークレットではないので `wrangler.toml` の `[vars]` に記載済み。
+`SITE_URL` はシークレットではないので `wrangler.toml` の `[vars]` に記載します。初回デプロイ後、実際の `workers.dev` またはカスタムドメインに置き換えてください。
 
 `.dev.vars` を作成:
 
@@ -131,11 +131,20 @@ http://localhost:4321 で開く。
 ## デプロイ
 
 ```bash
-npm run build
-npx wrangler pages deploy
+npm run deploy
 ```
 
-`wrangler.toml` の `pages_build_output_dir = "dist"` により、出力ディレクトリの指定は不要です。
+Astro 7のCloudflare adapterはCloudflare Pagesをサポートしないため、Cloudflare Workersへデプロイします。`astro build` が生成するWorkers設定をWranglerが自動的に使用し、Astroセッション用KVも初回デプロイ時に作成します。
+
+Git連携では、Cloudflare Dashboardの **Workers & Pages → Create application → Import a repository** からこのリポジトリをWorkersとして接続し、次を設定します。
+
+| 設定 | 値 |
+|------|----|
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Node.js | `.node-version`により`22.19.0` |
+
+Workers側のデプロイ成功を確認してから、旧Pagesプロジェクトの自動デプロイを無効化してください。
 
 ### 本番環境の初期設定
 
@@ -144,20 +153,20 @@ npx wrangler pages deploy
 #### 1. シークレット環境変数
 
 ```bash
-npx wrangler pages secret put GITHUB_CLIENT_ID
-npx wrangler pages secret put GITHUB_CLIENT_SECRET
-npx wrangler pages secret put JWT_SECRET
+npx wrangler secret put GITHUB_CLIENT_ID
+npx wrangler secret put GITHUB_CLIENT_SECRET
+npx wrangler secret put JWT_SECRET
 ```
 
 #### 2. SITE_URL の設定
 
-Cloudflare Dashboard → Pages → `web-app-index` → Settings → Environment variables で:
+Cloudflare Dashboard → Workers & Pages → `web-app-index` → Settings → Variables and Secrets で:
 
-- `SITE_URL` = `https://web-app-index.pages.dev`（本番のURL）
+- `SITE_URL` = 実際の `https://web-app-index.<subdomain>.workers.dev` またはカスタムドメイン
 
 #### 3. D1・R2 バインディング
 
-Dashboard → Pages → `web-app-index` → Settings → Functions → Bindings で:
+`wrangler.toml` に以下のWorkers bindingsを定義済みです。Workersへ初回デプロイすると適用されます。
 
 | 種類 | 変数名 | リソース |
 |------|--------|----------|
@@ -189,7 +198,7 @@ npx wrangler d1 execute web-app-index-db --remote --file=migrations/0002_library
 
 GitHub の OAuth App 設定で本番用の callback URL を追加:
 
-- `https://web-app-index.pages.dev/api/auth/callback`
+- `<SITE_URL>/api/auth/callback`
 
 設定完了後、再デプロイしてください。
 
@@ -231,6 +240,7 @@ src/
 | `npm run dev` | 開発サーバー |
 | `npm run build` | ビルド |
 | `npm run preview` | Wrangler でローカルプレビュー |
+| `npm run deploy` | Workersへビルド・デプロイ |
 | `npm run db:init` | D1 にスキーマ適用 |
 | `npm run db:migrate:private` | 既存のローカル D1 に非公開アプリ対応のマイグレーションを適用 |
 | `npm run db:migrate:library` | 既存のローカル D1 にカテゴリー・ステータスを追加 |
