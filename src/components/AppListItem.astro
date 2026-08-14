@@ -42,7 +42,7 @@ const editData = admin ? JSON.stringify({
       </button>
     )}
 
-    <button type="button" class="app-expand-btn app-primary-expand" aria-expanded="false" aria-controls={`app-details-${app.id}`}>
+    <a href={`/app/${app.id}`} class="app-primary-link" aria-label={`${app.title}の詳細を見る`}>
       <span class:list={['app-thumbnail', `app-thumbnail-${category.accent}`]}>
         {thumbnailUrl ? (
           <img src={thumbnailUrl} alt="" loading="lazy" />
@@ -53,11 +53,11 @@ const editData = admin ? JSON.stringify({
       <span class="min-w-0 text-left">
         <span class="flex items-center gap-2 min-w-0">
           <strong class="app-title">{app.title}</strong>
-          {!!app.is_private && <span class="private-label">非公開</span>}
+          {!!app.is_private && <span class="private-label">{app.is_locked ? 'Private・概要公開' : 'Private'}</span>}
         </span>
         <span class="app-description">{app.description || '説明はまだ登録されていません'}</span>
       </span>
-    </button>
+    </a>
 
     <div class="app-tech-preview" aria-label="主要技術">
       <div class="flex -space-x-1.5">
@@ -76,6 +76,7 @@ const editData = admin ? JSON.stringify({
     </div>
 
     <div class="app-row-actions">
+      <a href={`/app/${app.id}`} aria-label={`${app.title}の詳細を見る`}>詳細 →</a>
       {app.site_url && <a href={app.site_url} target="_blank" rel="noopener noreferrer" aria-label={`${app.title}を開く`}>サイト ↗</a>}
       {app.github_url && <a href={app.github_url} target="_blank" rel="noopener noreferrer" aria-label={`${app.title}のリポジトリを開く`}>GitHub ↗</a>}
       <button type="button" class="app-chevron app-expand-btn" aria-expanded="false" aria-controls={`app-details-${app.id}`} aria-label="技術構成を表示">

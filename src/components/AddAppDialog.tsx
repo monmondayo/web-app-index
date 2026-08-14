@@ -340,8 +340,8 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
               class="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
             />
             <span>
-              <span class="block text-sm font-medium text-gray-800">非公開アプリとして登録</span>
-              <span class="mt-0.5 block text-xs text-gray-500">ログイン中の自分にだけ一覧・詳細・APIデータを表示します。GitHub が private の場合は自動で有効になります。</span>
+              <span class="block text-sm font-medium text-gray-800">Privateアプリとして登録</span>
+              <span class="mt-0.5 block text-xs text-gray-500">概要・サムネイル・技術構成は公開し、サイトURLとGitHub URLはログイン中の自分だけに表示します。GitHub が private の場合は自動で有効になります。</span>
             </span>
           </label>
 

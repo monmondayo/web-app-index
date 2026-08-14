@@ -20,6 +20,8 @@ export interface App {
 
 export interface AppWithTech extends App {
   tech_stacks: TechStack[];
+  /** True when private links are hidden from the current viewer. */
+  is_locked: boolean;
 }
 
 export interface TechStack {
@@ -41,13 +43,11 @@ export interface User {
 }
 
 export async function getApps(db: D1Database, viewerUserId?: number): Promise<AppWithTech[]> {
-  const apps = viewerUserId
-    ? await db.prepare(
-      'SELECT * FROM apps WHERE is_private = 0 OR user_id = ? ORDER BY display_order ASC, updated_at DESC'
-    ).bind(viewerUserId).all<App>()
-    : await db.prepare(
-      'SELECT * FROM apps WHERE is_private = 0 ORDER BY display_order ASC, updated_at DESC'
-    ).all<App>();
+  // Private apps keep their catalog summary public. Sensitive links are
+  // redacted below unless the viewer owns the app.
+  const apps = await db.prepare(
+    'SELECT * FROM apps ORDER BY display_order ASC, updated_at DESC'
+  ).all<App>();
 
   if (!apps.results.length) return [];
 
@@ -66,17 +66,11 @@ export async function getApps(db: D1Database, viewerUserId?: number): Promise<Ap
     techMap.set(row.app_id, list);
   }
 
-  return apps.results.map((app) => ({
-    ...app,
-    tech_stacks: techMap.get(app.id) || [],
-  }));
+  return apps.results.map((app) => redactPrivateLinks(app, techMap.get(app.id) || [], viewerUserId));
 }
 
 export async function getAppById(db: D1Database, id: number, viewerUserId?: number): Promise<AppWithTech | null> {
-  const app = viewerUserId
-    ? await db.prepare('SELECT * FROM apps WHERE id = ? AND (is_private = 0 OR user_id = ?)')
-      .bind(id, viewerUserId).first<App>()
-    : await db.prepare('SELECT * FROM apps WHERE id = ? AND is_private = 0').bind(id).first<App>();
+  const app = await db.prepare('SELECT * FROM apps WHERE id = ?').bind(id).first<App>();
   if (!app) return null;
 
   const techRows = await db.prepare(
@@ -85,7 +79,18 @@ export async function getAppById(db: D1Database, id: number, viewerUserId?: numb
      WHERE at.app_id = ?`
   ).bind(id).all<TechStack>();
 
-  return { ...app, tech_stacks: techRows.results };
+  return redactPrivateLinks(app, techRows.results, viewerUserId);
+}
+
+function redactPrivateLinks(app: App, techStacks: TechStack[], viewerUserId?: number): AppWithTech {
+  const isLocked = !!app.is_private && app.user_id !== viewerUserId;
+  return {
+    ...app,
+    site_url: isLocked ? null : app.site_url,
+    github_url: isLocked ? null : app.github_url,
+    tech_stacks: techStacks,
+    is_locked: isLocked,
+  };
 }
 
 export async function createApp(
