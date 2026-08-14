@@ -1,23 +1,29 @@
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 import { decryptSecret, getCurrentUser, isAdmin } from '../../lib/auth';
 import { detectTechFromGitHub } from '../../lib/tech-detector';
 import { getEncryptedGithubAccessToken, getTechStacks } from '../../lib/db';
+import { AppInputError, readGithubUrl } from '../../lib/app-input';
 
-export const POST: APIRoute = async ({ request, locals }) => {
-  const env = locals.runtime.env;
+export const POST: APIRoute = async ({ request }) => {
   const user = await getCurrentUser(request, env.JWT_SECRET);
   if (!user || !isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
 
-  const { github_url } = await request.json();
-  if (!github_url) {
-    return new Response(JSON.stringify({ error: 'Missing github_url' }), { status: 400 });
+  let githubUrl: string;
+  try {
+    githubUrl = await readGithubUrl(request);
+  } catch (error) {
+    if (error instanceof AppInputError) {
+      return new Response(JSON.stringify({ error: error.message }), { status: 400 });
+    }
+    throw error;
   }
 
   const encryptedToken = await getEncryptedGithubAccessToken(env.DB, user.userId);
   const accessToken = encryptedToken ? await decryptSecret(encryptedToken, env.JWT_SECRET) : null;
-  const detectedTech = await detectTechFromGitHub(github_url, accessToken ? { accessToken } : {
+  const detectedTech = await detectTechFromGitHub(githubUrl, accessToken ? { accessToken } : {
     clientId: env.GITHUB_CLIENT_ID,
     clientSecret: env.GITHUB_CLIENT_SECRET,
   });

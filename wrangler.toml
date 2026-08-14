@@ -14,3 +14,5 @@ bucket_name = "web-app-index-thumbnails"
 [vars]
 SITE_URL = "https://web-app-index.pages.dev"
 ADMIN_GITHUB_USERNAME = "monmondayo"
+# Privateリポジトリも検出する場合だけ "true" に変更（GitHubの広い repo 権限を要求します）
+GITHUB_ENABLE_PRIVATE_REPOS = "false"

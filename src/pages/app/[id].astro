@@ -1,12 +1,12 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { env } from 'cloudflare:workers';
 import LibrarySidebar from '../../components/LibrarySidebar.astro';
 import { getAppById, getApps } from '../../lib/db';
 import { getCurrentUser } from '../../lib/auth';
 import { APP_CATEGORIES, APP_STATUSES, getTechRole, type AppCategory, type AppStatus } from '../../lib/catalog';
 import { TECH_DESCRIPTIONS, getTechIconSvg } from '../../lib/icons';
 
-const env = Astro.locals.runtime.env;
 const user = await getCurrentUser(Astro.request, env.JWT_SECRET);
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 const id = Number(Astro.params.id);

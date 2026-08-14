@@ -4,7 +4,7 @@
 
 ## Tech Stack
 
-- **Framework**: Astro 5 (SSR)
+- **Framework**: Astro 7 (SSR)
 - **UI**: Preact Islands + Tailwind CSS
 - **Hosting**: Cloudflare Pages
 - **Database**: Cloudflare D1 (SQLite)
@@ -17,7 +17,7 @@
 
 - GitHub OAuth ログイン
 - 公開／Privateアプリの登録（Privateでも概要・サムネイル・技術構成は公開し、サイト／GitHubリンクは所有者のログイン中のみ表示）
-- 非公開 GitHub リポジトリからの技術スタック検出
+- 公開 GitHub リポジトリからの技術スタック検出（非公開リポジトリ対応は明示的な設定時のみ）
 - 目的別カテゴリーと公開状態によるライブラリ型ナビゲーション
 - リスト表示、横断検索、技術構成の展開表示
 - 技術の役割・説明・採用アプリを確認できる技術カタログ
@@ -32,7 +32,7 @@
 
 ### 前提条件
 
-- Node.js 18+
+- Node.js 22.19+
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)
 - GitHub OAuth App ([作成手順](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app))
 
@@ -47,7 +47,9 @@
 | Authorization callback URL | `http://localhost:4321/api/auth/callback` |
 | Enable Device Flow | チェック不要 (ブラウザリダイレクト方式を使うため) |
 
-ログイン時に GitHub の `repo` スコープを要求します。これは非公開リポジトリの技術スタックを読み取るために必要です。取得したアクセストークンは `JWT_SECRET` から導出した鍵で暗号化して D1 に保存され、ブラウザには送信されません。
+既定では GitHub の `read:user` スコープだけを要求し、公開リポジトリを対象にします。非公開リポジトリも検出する場合だけ `GITHUB_ENABLE_PRIVATE_REPOS=true` を設定してください。この場合は広範な `repo` スコープを要求し、アクセストークンを `JWT_SECRET` から導出した鍵で暗号化して D1 に保存します。可能なら将来は、対象リポジトリを限定できる GitHub App へ移行してください。
+
+以前のバージョンで `repo` を許可済みの場合、設定を `false` にしただけではGitHub側の許可は縮小されません。GitHubの Settings → Applications → Authorized OAuth Apps で本アプリの許可を一度取り消し、再ログインしてください。再ログイン時にD1上の旧アクセストークンも削除されます。
 
 本番デプロイ後は Homepage URL と callback URL を `https://your-app.pages.dev` に変更する。
 
@@ -82,6 +84,7 @@ npx wrangler r2 bucket create web-app-index-thumbnails
 GITHUB_CLIENT_ID=your_client_id
 GITHUB_CLIENT_SECRET=your_client_secret
 JWT_SECRET=your_random_secret_string
+GITHUB_ENABLE_PRIVATE_REPOS=false
 ```
 
 `JWT_SECRET` は以下のコマンドでランダム生成できる:
@@ -91,6 +94,12 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 GitHub OAuth App の callback URL は `http://localhost:4321/api/auth/callback` に設定する。
+
+### セキュリティ上の既定値
+
+- セッションCookieとOAuth state Cookieは本番HTTPS環境で `Secure`、常に `HttpOnly` / `SameSite=Lax` です。
+- 手動アップロードは管理者限定で、PNG/JPEG/GIF/WebPの実ファイル署名を検証します。SVGや拡張子偽装は拒否します。
+- 非公開リポジトリへのアクセスは既定で無効です。
 
 ### 4. データベース初期化
 

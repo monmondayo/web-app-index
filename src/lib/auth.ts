@@ -69,12 +69,17 @@ export async function verifyToken(token: string, secret: string): Promise<JWTPay
   }
 }
 
-export function getSessionCookie(token: string): string {
-  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${TOKEN_EXPIRY}`;
+function secureCookieAttribute(request: Request): string {
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  return new URL(request.url).protocol === 'https:' || forwardedProto === 'https' ? '; Secure' : '';
 }
 
-export function clearSessionCookie(): string {
-  return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+export function getSessionCookie(token: string, request: Request): string {
+  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${TOKEN_EXPIRY}${secureCookieAttribute(request)}`;
+}
+
+export function clearSessionCookie(request: Request): string {
+  return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureCookieAttribute(request)}`;
 }
 
 export function getTokenFromRequest(request: Request): string | null {
@@ -88,12 +93,12 @@ export function createOAuthState(): string {
   return base64UrlEncode(bytes);
 }
 
-export function getOAuthStateCookie(state: string): string {
-  return `${OAUTH_STATE_COOKIE_NAME}=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`;
+export function getOAuthStateCookie(state: string, request: Request): string {
+  return `${OAUTH_STATE_COOKIE_NAME}=${state}; Path=/api/auth; HttpOnly; SameSite=Lax; Max-Age=600${secureCookieAttribute(request)}`;
 }
 
-export function clearOAuthStateCookie(): string {
-  return `${OAUTH_STATE_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+export function clearOAuthStateCookie(request: Request): string {
+  return `${OAUTH_STATE_COOKIE_NAME}=; Path=/api/auth; HttpOnly; SameSite=Lax; Max-Age=0${secureCookieAttribute(request)}`;
 }
 
 export function getOAuthStateFromRequest(request: Request): string | null {

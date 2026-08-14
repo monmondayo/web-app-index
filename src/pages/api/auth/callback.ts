@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 import { findOrCreateUser } from '../../../lib/db';
 import {
   clearOAuthStateCookie,
@@ -8,8 +9,7 @@ import {
   getSessionCookie,
 } from '../../../lib/auth';
 
-export const GET: APIRoute = async ({ request, locals }) => {
-  const env = locals.runtime.env;
+export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
@@ -30,10 +30,11 @@ export const GET: APIRoute = async ({ request, locals }) => {
       client_id: env.GITHUB_CLIENT_ID,
       client_secret: env.GITHUB_CLIENT_SECRET,
       code,
+      redirect_uri: `${env.SITE_URL}/api/auth/callback`,
     }),
   });
 
-  const tokenData = await tokenRes.json() as { access_token?: string; error?: string };
+  const tokenData = await tokenRes.json() as { access_token?: string; scope?: string; error?: string };
   if (!tokenData.access_token) {
     return new Response('Failed to get access token', { status: 400 });
   }
@@ -51,7 +52,13 @@ export const GET: APIRoute = async ({ request, locals }) => {
     return new Response('Failed to get GitHub user', { status: 400 });
   }
 
-  const encryptedAccessToken = await encryptSecret(tokenData.access_token, env.JWT_SECRET);
+  // Persist the token only when private-repository access is explicitly enabled.
+  // A default-scope login also clears any broad token stored by an older release.
+  const privateRepositoryAccess = String(env.GITHUB_ENABLE_PRIVATE_REPOS) === 'true';
+  const grantedScopes = new Set((tokenData.scope || '').split(',').map((scope) => scope.trim()));
+  const encryptedAccessToken = privateRepositoryAccess && grantedScopes.has('repo')
+    ? await encryptSecret(tokenData.access_token, env.JWT_SECRET)
+    : null;
 
   // Create or update user in DB
   const user = await findOrCreateUser(
@@ -70,8 +77,9 @@ export const GET: APIRoute = async ({ request, locals }) => {
   }, env.JWT_SECRET);
 
   const headers = new Headers({ 'Location': '/' });
-  headers.append('Set-Cookie', getSessionCookie(token));
-  headers.append('Set-Cookie', clearOAuthStateCookie());
+  headers.append('Set-Cookie', getSessionCookie(token, request));
+  headers.append('Set-Cookie', clearOAuthStateCookie(request));
+  headers.set('Cache-Control', 'no-store');
 
   return new Response(null, {
     status: 302,
