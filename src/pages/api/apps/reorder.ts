@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
+import { env } from 'cloudflare:workers';
 import { getCurrentUser, isAdmin } from '../../../lib/auth';
 
-export const PUT: APIRoute = async ({ request, locals }) => {
-  const env = locals.runtime.env;
+export const PUT: APIRoute = async ({ request }) => {
   const user = await getCurrentUser(request, env.JWT_SECRET);
   if (!user || !isAdmin(user, env.ADMIN_GITHUB_USERNAME)) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });

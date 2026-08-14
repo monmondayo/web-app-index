@@ -193,25 +193,25 @@ export async function findOrCreateUser(
   githubId: string,
   username: string,
   avatarUrl: string | null,
-  githubAccessToken?: string,
+  githubAccessToken: string | null,
 ): Promise<User> {
   const existing = await db.prepare('SELECT * FROM users WHERE github_id = ?').bind(githubId).first<User>();
   if (existing) {
-    await db.prepare('UPDATE users SET github_username = ?, avatar_url = ?, github_access_token = COALESCE(?, github_access_token) WHERE id = ?')
-      .bind(username, avatarUrl, githubAccessToken || null, existing.id).run();
-    return { ...existing, github_username: username, avatar_url: avatarUrl, github_access_token: githubAccessToken || existing.github_access_token };
+    await db.prepare('UPDATE users SET github_username = ?, avatar_url = ?, github_access_token = ? WHERE id = ?')
+      .bind(username, avatarUrl, githubAccessToken, existing.id).run();
+    return { ...existing, github_username: username, avatar_url: avatarUrl, github_access_token: githubAccessToken };
   }
 
   const result = await db.prepare(
     'INSERT INTO users (github_id, github_username, avatar_url, github_access_token) VALUES (?, ?, ?, ?)'
-  ).bind(githubId, username, avatarUrl, githubAccessToken || null).run();
+  ).bind(githubId, username, avatarUrl, githubAccessToken).run();
 
   return {
     id: result.meta.last_row_id as number,
     github_id: githubId,
     github_username: username,
     avatar_url: avatarUrl,
-    github_access_token: githubAccessToken || null,
+    github_access_token: githubAccessToken,
     created_at: new Date().toISOString(),
   };
 }

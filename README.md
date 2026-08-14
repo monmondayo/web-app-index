@@ -4,9 +4,9 @@
 
 ## Tech Stack
 
-- **Framework**: Astro 5 (SSR)
+- **Framework**: Astro 7 (SSR)
 - **UI**: Preact Islands + Tailwind CSS
-- **Hosting**: Cloudflare Pages
+- **Hosting**: Cloudflare Workers
 - **Database**: Cloudflare D1 (SQLite)
 - **画像保存**: Cloudflare R2
 - **認証**: GitHub OAuth + JWT Cookie
@@ -17,7 +17,7 @@
 
 - GitHub OAuth ログイン
 - 公開／Privateアプリの登録（Privateでも概要・サムネイル・紹介動画・技術構成は公開し、サイト／GitHubリンクは所有者のログイン中のみ表示）
-- 非公開 GitHub リポジトリからの技術スタック検出
+- 公開 GitHub リポジトリからの技術スタック検出（非公開リポジトリ対応は明示的な設定時のみ）
 - 目的別カテゴリーと公開状態によるライブラリ型ナビゲーション
 - リスト表示、横断検索、技術構成の展開表示
 - 技術の役割・説明・採用アプリを確認できる技術カタログ
@@ -33,7 +33,7 @@
 
 ### 前提条件
 
-- Node.js 18+
+- Node.js 22.19+
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)
 - GitHub OAuth App ([作成手順](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app))
 
@@ -48,9 +48,11 @@
 | Authorization callback URL | `http://localhost:4321/api/auth/callback` |
 | Enable Device Flow | チェック不要 (ブラウザリダイレクト方式を使うため) |
 
-ログイン時に GitHub の `repo` スコープを要求します。これは非公開リポジトリの技術スタックを読み取るために必要です。取得したアクセストークンは `JWT_SECRET` から導出した鍵で暗号化して D1 に保存され、ブラウザには送信されません。
+既定では GitHub の `read:user` スコープだけを要求し、公開リポジトリを対象にします。非公開リポジトリも検出する場合だけ `GITHUB_ENABLE_PRIVATE_REPOS=true` を設定してください。この場合は広範な `repo` スコープを要求し、アクセストークンを `JWT_SECRET` から導出した鍵で暗号化して D1 に保存します。可能なら将来は、対象リポジトリを限定できる GitHub App へ移行してください。
 
-本番デプロイ後は Homepage URL と callback URL を `https://your-app.pages.dev` に変更する。
+以前のバージョンで `repo` を許可済みの場合、設定を `false` にしただけではGitHub側の許可は縮小されません。GitHubの Settings → Applications → Authorized OAuth Apps で本アプリの許可を一度取り消し、再ログインしてください。再ログイン時にD1上の旧アクセストークンも削除されます。
+
+本番デプロイ後は Homepage URL と callback URL を実際の `workers.dev` またはカスタムドメインに変更する。
 
 ### 1. 依存関係のインストール
 
@@ -75,7 +77,7 @@ npx wrangler r2 bucket create web-app-index-thumbnails
 ### 3. 環境変数の設定
 
 シークレット情報は `.dev.vars` に記載する（`.gitignore` 対象のため git にコミットされない）。
-`SITE_URL` はシークレットではないので `wrangler.toml` の `[vars]` に記載済み。
+`SITE_URL` はシークレットではないので `wrangler.toml` の `[vars]` に記載します。初回デプロイ後、実際の `workers.dev` またはカスタムドメインに置き換えてください。
 
 `.dev.vars` を作成:
 
@@ -83,6 +85,7 @@ npx wrangler r2 bucket create web-app-index-thumbnails
 GITHUB_CLIENT_ID=your_client_id
 GITHUB_CLIENT_SECRET=your_client_secret
 JWT_SECRET=your_random_secret_string
+GITHUB_ENABLE_PRIVATE_REPOS=false
 ```
 
 `JWT_SECRET` は以下のコマンドでランダム生成できる:
@@ -92,6 +95,12 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 GitHub OAuth App の callback URL は `http://localhost:4321/api/auth/callback` に設定する。
+
+### セキュリティ上の既定値
+
+- セッションCookieとOAuth state Cookieは本番HTTPS環境で `Secure`、常に `HttpOnly` / `SameSite=Lax` です。
+- 手動アップロードは管理者限定で、PNG/JPEG/GIF/WebPの実ファイル署名を検証します。SVGや拡張子偽装は拒否します。
+- 非公開リポジトリへのアクセスは既定で無効です。
 
 ### 4. データベース初期化
 
@@ -129,11 +138,20 @@ http://localhost:4321 で開く。
 ## デプロイ
 
 ```bash
-npm run build
-npx wrangler pages deploy
+npm run deploy
 ```
 
-`wrangler.toml` の `pages_build_output_dir = "dist"` により、出力ディレクトリの指定は不要です。
+Astro 7のCloudflare adapterはCloudflare Pagesをサポートしないため、Cloudflare Workersへデプロイします。`astro build` が生成するWorkers設定をWranglerが自動的に使用し、Astroセッション用KVも初回デプロイ時に作成します。
+
+Git連携では、Cloudflare Dashboardの **Workers & Pages → Create application → Import a repository** からこのリポジトリをWorkersとして接続し、次を設定します。
+
+| 設定 | 値 |
+|------|----|
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+| Node.js | `.node-version`により`22.19.0` |
+
+Workers側のデプロイ成功を確認してから、旧Pagesプロジェクトの自動デプロイを無効化してください。
 
 ### 本番環境の初期設定
 
@@ -142,20 +160,20 @@ npx wrangler pages deploy
 #### 1. シークレット環境変数
 
 ```bash
-npx wrangler pages secret put GITHUB_CLIENT_ID
-npx wrangler pages secret put GITHUB_CLIENT_SECRET
-npx wrangler pages secret put JWT_SECRET
+npx wrangler secret put GITHUB_CLIENT_ID
+npx wrangler secret put GITHUB_CLIENT_SECRET
+npx wrangler secret put JWT_SECRET
 ```
 
 #### 2. SITE_URL の設定
 
-Cloudflare Dashboard → Pages → `web-app-index` → Settings → Environment variables で:
+Cloudflare Dashboard → Workers & Pages → `web-app-index` → Settings → Variables and Secrets で:
 
-- `SITE_URL` = `https://web-app-index.pages.dev`（本番のURL）
+- `SITE_URL` = 実際の `https://web-app-index.<subdomain>.workers.dev` またはカスタムドメイン
 
 #### 3. D1・R2 バインディング
 
-Dashboard → Pages → `web-app-index` → Settings → Functions → Bindings で:
+`wrangler.toml` に以下のWorkers bindingsを定義済みです。Workersへ初回デプロイすると適用されます。
 
 | 種類 | 変数名 | リソース |
 |------|--------|----------|
@@ -193,7 +211,7 @@ npx wrangler d1 execute web-app-index-db --remote --file=migrations/0004_app_vid
 
 GitHub の OAuth App 設定で本番用の callback URL を追加:
 
-- `https://web-app-index.pages.dev/api/auth/callback`
+- `<SITE_URL>/api/auth/callback`
 
 設定完了後、再デプロイしてください。
 
@@ -236,6 +254,7 @@ src/
 | `npm run dev` | 開発サーバー |
 | `npm run build` | ビルド |
 | `npm run preview` | Wrangler でローカルプレビュー |
+| `npm run deploy` | Workersへビルド・デプロイ |
 | `npm run db:init` | D1 にスキーマ適用 |
 | `npm run db:migrate:private` | 既存のローカル D1 に非公開アプリ対応のマイグレーションを適用 |
 | `npm run db:migrate:library` | 既存のローカル D1 にカテゴリー・ステータスを追加 |

@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { env } from 'cloudflare:workers';
 import LibrarySidebar from '../components/LibrarySidebar.astro';
 import AppListItem from '../components/AppListItem.astro';
 import { getApps, type AppWithTech } from '../lib/db';
@@ -13,7 +14,6 @@ import {
   type AppStatus,
 } from '../lib/catalog';
 
-const env = Astro.locals.runtime.env;
 const user = await getCurrentUser(Astro.request, env.JWT_SECRET);
 const admin = isAdmin(user, env.ADMIN_GITHUB_USERNAME);
 Astro.response.headers.set('Cache-Control', 'private, no-store');
