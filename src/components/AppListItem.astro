@@ -12,6 +12,7 @@ const thumbnailUrl = app.thumbnail_type === 'none'
   : app.thumbnail_url || (app.site_url ? `https://image.thum.io/get/width/320/crop/180/${app.site_url}` : '');
 const visibleTech = app.tech_stacks.slice(0, 3);
 const remainingTech = Math.max(0, app.tech_stacks.length - visibleTech.length);
+const emptyTechLabel = app.status === 'idea' ? '技術選定中' : '技術情報を準備中';
 const searchText = [app.title, app.description, category.label, status.label, ...app.tech_stacks.flatMap((tech) => [tech.name, tech.usage_role])]
   .filter(Boolean).join(' ').toLowerCase();
 const editData = admin ? JSON.stringify({
@@ -20,6 +21,7 @@ const editData = admin ? JSON.stringify({
   description: app.description || '',
   site_url: app.site_url || '',
   github_url: app.github_url || '',
+  video_url: app.video_url || '',
   thumbnail_url: app.thumbnail_url || '',
   thumbnail_type: app.thumbnail_type || 'auto',
   is_private: !!app.is_private,
@@ -54,6 +56,7 @@ const editData = admin ? JSON.stringify({
         <span class="flex items-center gap-2 min-w-0">
           <strong class="app-title">{app.title}</strong>
           {!!app.is_private && <span class="private-label">{app.is_locked ? 'Private・概要公開' : 'Private'}</span>}
+          {app.video_url && <span class="video-label">紹介動画</span>}
         </span>
         <span class="app-description">{app.description || '説明はまだ登録されていません'}</span>
       </span>
@@ -67,7 +70,7 @@ const editData = admin ? JSON.stringify({
           </span>
         ))}
       </div>
-      <span class="hidden xl:inline truncate">{visibleTech[0]?.name || '技術未登録'}{remainingTech > 0 ? ` +${remainingTech}` : ''}</span>
+      <span class="hidden xl:inline truncate">{visibleTech[0]?.name || emptyTechLabel}{remainingTech > 0 ? ` +${remainingTech}` : ''}</span>
     </div>
 
     <div class="app-row-meta">
@@ -114,7 +117,7 @@ const editData = admin ? JSON.stringify({
         ))}
       </div>
     ) : (
-      <p class="text-sm text-slate-500">技術スタックはまだ登録されていません。</p>
+      <p class="text-sm text-slate-500">{emptyTechLabel}</p>
     )}
   </div>
 </article>

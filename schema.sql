@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS apps (
   description TEXT,
   site_url TEXT,
   github_url TEXT,
+  video_url TEXT,
   thumbnail_url TEXT,
   thumbnail_type TEXT DEFAULT 'auto',
   is_private INTEGER NOT NULL DEFAULT 0 CHECK (is_private IN (0, 1)),

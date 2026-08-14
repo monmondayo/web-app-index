@@ -65,6 +65,9 @@ INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('OpenLay
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Chart.js', 'chartdotjs', 'library', 'FF6384');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Puppeteer', 'puppeteer', 'library', '40B5A4');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Playwright', 'playwright', 'library', '2EAD33');
+INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Gradio', 'gradio', 'library', 'F97316');
+INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Jetpack Compose', 'jetpackcompose', 'library', '4285F4');
+INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('CameraX', 'androidstudio', 'library', '3DDC84');
 
 -- Other
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('GraphQL', 'graphql', 'other', 'E10098');
@@ -73,3 +76,7 @@ INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('WebSock
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Markdown', 'markdown', 'other', '000000');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('ESLint', 'eslint', 'other', '4B32C3');
 INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Prettier', 'prettier', 'other', 'F7B93E');
+INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Replicate', 'replicate', 'infrastructure', '000000');
+INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Hugging Face', 'huggingface', 'infrastructure', 'FFD21E');
+INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Android', 'android', 'other', '3DDC84');
+INSERT OR IGNORE INTO tech_stacks (name, slug, category, color) VALUES ('Kotlin', 'kotlin', 'other', '7F52FF');

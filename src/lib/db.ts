@@ -8,6 +8,7 @@ export interface App {
   description: string | null;
   site_url: string | null;
   github_url: string | null;
+  video_url: string | null;
   thumbnail_url: string | null;
   thumbnail_type: string;
   is_private: number;
@@ -95,17 +96,17 @@ function redactPrivateLinks(app: App, techStacks: TechStack[], viewerUserId?: nu
 
 export async function createApp(
   db: D1Database,
-  data: { user_id: number; title: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; is_private?: boolean; category?: AppCategory; status?: AppStatus; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> }
+  data: { user_id: number; title: string; description?: string; site_url?: string; github_url?: string; video_url?: string; thumbnail_url?: string; thumbnail_type?: string; is_private?: boolean; category?: AppCategory; status?: AppStatus; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> }
 ): Promise<number> {
   const maxOrder = await db.prepare('SELECT COALESCE(MAX(display_order), 0) as max_order FROM apps').first<{ max_order: number }>();
   const nextOrder = (maxOrder?.max_order ?? 0) + 1;
 
   const result = await db.prepare(
-    `INSERT INTO apps (user_id, title, description, site_url, github_url, thumbnail_url, thumbnail_type, is_private, category, status, display_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO apps (user_id, title, description, site_url, github_url, video_url, thumbnail_url, thumbnail_type, is_private, category, status, display_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     data.user_id, data.title, data.description || null, data.site_url || null,
-    data.github_url || null, data.thumbnail_url || null, data.thumbnail_type || 'auto', data.is_private ? 1 : 0,
+    data.github_url || null, data.video_url || null, data.thumbnail_url || null, data.thumbnail_type || 'auto', data.is_private ? 1 : 0,
     data.category || 'other', data.status || 'live', nextOrder
   ).run();
 
@@ -125,7 +126,7 @@ export async function createApp(
 export async function updateApp(
   db: D1Database,
   id: number,
-  data: { title?: string; description?: string; site_url?: string; github_url?: string; thumbnail_url?: string; thumbnail_type?: string; is_private?: boolean; category?: AppCategory; status?: AppStatus; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> },
+  data: { title?: string; description?: string; site_url?: string; github_url?: string; video_url?: string; thumbnail_url?: string; thumbnail_type?: string; is_private?: boolean; category?: AppCategory; status?: AppStatus; tech_ids?: number[]; tech_entries?: Array<{ id: number; usage_role?: string }> },
   ownerUserId?: number,
 ): Promise<void> {
   if (ownerUserId !== undefined) {
@@ -141,6 +142,7 @@ export async function updateApp(
   if (data.description !== undefined) { fields.push('description = ?'); values.push(data.description); }
   if (data.site_url !== undefined) { fields.push('site_url = ?'); values.push(data.site_url); }
   if (data.github_url !== undefined) { fields.push('github_url = ?'); values.push(data.github_url); }
+  if (data.video_url !== undefined) { fields.push('video_url = ?'); values.push(data.video_url || null); }
   if (data.thumbnail_url !== undefined) { fields.push('thumbnail_url = ?'); values.push(data.thumbnail_url); }
   if (data.thumbnail_type !== undefined) { fields.push('thumbnail_type = ?'); values.push(data.thumbnail_type); }
   if (data.is_private !== undefined) { fields.push('is_private = ?'); values.push(data.is_private ? 1 : 0); }

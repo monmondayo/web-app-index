@@ -1,4 +1,5 @@
 import { isAppCategory, isAppStatus, type AppCategory, type AppStatus } from './catalog';
+import { normalizeYouTubeUrl } from './video';
 
 const MAX_JSON_BYTES = 64 * 1024;
 
@@ -15,6 +16,7 @@ export interface AppInput {
   description?: string;
   site_url?: string;
   github_url?: string;
+  video_url?: string;
   thumbnail_url?: string;
   thumbnail_type: 'auto' | 'manual' | 'none';
   is_private: boolean;
@@ -47,6 +49,16 @@ function webUrl(value: unknown, field: string): string | undefined {
   } catch {
     throw new AppInputError(`${field} must be an http(s) URL`);
   }
+}
+
+function videoUrl(value: unknown): string | undefined {
+  const text = optionalString(value, 'video_url', 2048);
+  if (!text) return undefined;
+  const normalized = normalizeYouTubeUrl(text);
+  if (!normalized) {
+    throw new AppInputError('紹介動画には有効なYouTube URLを入力してください');
+  }
+  return normalized;
 }
 
 function githubUrl(value: unknown): string | undefined {
@@ -136,6 +148,7 @@ export async function readAppInput(request: Request, requireId = false): Promise
     description: optionalString(value.description, 'description', 2_000),
     site_url: webUrl(value.site_url, 'site_url'),
     github_url: githubUrl(value.github_url),
+    video_url: videoUrl(value.video_url),
     thumbnail_url: thumbnailUrl,
     thumbnail_type: thumbnailType,
     is_private: value.is_private === true,
