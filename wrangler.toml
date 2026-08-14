@@ -1,6 +1,8 @@
 name = "web-app-index"
-compatibility_date = "2024-12-01"
-pages_build_output_dir = "dist"
+compatibility_date = "2026-08-14"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+preview_urls = true
 
 [[d1_databases]]
 binding = "DB"
@@ -12,5 +14,8 @@ binding = "R2"
 bucket_name = "web-app-index-thumbnails"
 
 [vars]
-SITE_URL = "https://web-app-index.pages.dev"
+# Workersへ初回デプロイ後、実際の workers.dev またはカスタムドメインに変更します。
+SITE_URL = "https://web-app-index.<YOUR_WORKERS_SUBDOMAIN>.workers.dev"
 ADMIN_GITHUB_USERNAME = "monmondayo"
+# Privateリポジトリも検出する場合だけ "true" に変更（GitHubの広い repo 権限を要求します）
+GITHUB_ENABLE_PRIVATE_REPOS = "false"
