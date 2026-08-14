@@ -225,4 +225,5 @@ src/
 | `npm run db:init` | D1 にスキーマ適用 |
 | `npm run db:migrate:private` | 既存のローカル D1 に非公開アプリ対応のマイグレーションを適用 |
 | `npm run db:migrate:library` | 既存のローカル D1 にカテゴリー・ステータスを追加 |
+| `npm run db:migrate:tech` | 技術未登録アプリへ検出済みの技術構成を補完 |
 | `npm run db:seed` | 技術スタック初期データ投入 |

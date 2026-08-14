@@ -10,6 +10,7 @@
     "db:init": "wrangler d1 execute web-app-index-db --local --file=schema.sql",
     "db:migrate:private": "wrangler d1 execute web-app-index-db --local --file=migrations/0001_private_apps.sql",
     "db:migrate:library": "wrangler d1 execute web-app-index-db --local --file=migrations/0002_library_navigation.sql",
+    "db:migrate:tech": "wrangler d1 execute web-app-index-db --local --file=migrations/0003_backfill_missing_tech.sql",
     "db:seed": "wrangler d1 execute web-app-index-db --local --file=seed.sql"
   },
   "dependencies": {

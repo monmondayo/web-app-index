@@ -26,6 +26,7 @@ const previousApp = currentIndex > 0 ? allApps[currentIndex - 1] : null;
 const nextApp = currentIndex >= 0 && currentIndex < allApps.length - 1 ? allApps[currentIndex + 1] : null;
 const previousUrl = previousApp ? `/app/${previousApp.id}` : '';
 const nextUrl = nextApp ? `/app/${nextApp.id}` : '';
+const emptyTechLabel = app.status === 'idea' ? '技術選定中です。' : '技術情報を準備中です。';
 ---
 <Layout title={`${app.title} - App Library`}>
   <div class="min-h-screen lg:flex bg-slate-100">
@@ -113,7 +114,7 @@ const nextUrl = nextApp ? `/app/${nextApp.id}` : '';
                       <span class="block mt-0.5 text-[10px] text-violet-300">{getTechRole(tech.category, tech.usage_role)}</span>
                     </span>
                   </div>
-                )) : <p class="text-xs text-slate-500">技術スタックは未登録です。</p>}
+                )) : <p class="text-xs text-slate-500">{emptyTechLabel}</p>}
               </div>
             </div>
           </aside>

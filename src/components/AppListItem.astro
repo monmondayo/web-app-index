@@ -12,6 +12,7 @@ const thumbnailUrl = app.thumbnail_type === 'none'
   : app.thumbnail_url || (app.site_url ? `https://image.thum.io/get/width/320/crop/180/${app.site_url}` : '');
 const visibleTech = app.tech_stacks.slice(0, 3);
 const remainingTech = Math.max(0, app.tech_stacks.length - visibleTech.length);
+const emptyTechLabel = app.status === 'idea' ? '技術選定中' : '技術情報を準備中';
 const searchText = [app.title, app.description, category.label, status.label, ...app.tech_stacks.flatMap((tech) => [tech.name, tech.usage_role])]
   .filter(Boolean).join(' ').toLowerCase();
 const editData = admin ? JSON.stringify({
@@ -67,7 +68,7 @@ const editData = admin ? JSON.stringify({
           </span>
         ))}
       </div>
-      <span class="hidden xl:inline truncate">{visibleTech[0]?.name || '技術未登録'}{remainingTech > 0 ? ` +${remainingTech}` : ''}</span>
+      <span class="hidden xl:inline truncate">{visibleTech[0]?.name || emptyTechLabel}{remainingTech > 0 ? ` +${remainingTech}` : ''}</span>
     </div>
 
     <div class="app-row-meta">
@@ -114,7 +115,7 @@ const editData = admin ? JSON.stringify({
         ))}
       </div>
     ) : (
-      <p class="text-sm text-slate-500">技術スタックはまだ登録されていません。</p>
+      <p class="text-sm text-slate-500">{emptyTechLabel}</p>
     )}
   </div>
 </article>
