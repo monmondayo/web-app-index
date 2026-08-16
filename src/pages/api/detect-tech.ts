@@ -3,7 +3,7 @@ import { env } from 'cloudflare:workers';
 import { decryptSecret, getCurrentUser, isAdmin } from '../../lib/auth';
 import { detectTechFromGitHub } from '../../lib/tech-detector';
 import { getEncryptedGithubAccessToken, getTechStacks } from '../../lib/db';
-import { AppInputError, readGithubUrl } from '../../lib/app-input';
+import { AppInputError, readRepositoryUrl } from '../../lib/app-input';
 
 export const POST: APIRoute = async ({ request }) => {
   const user = await getCurrentUser(request, env.JWT_SECRET);
@@ -13,7 +13,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   let githubUrl: string;
   try {
-    githubUrl = await readGithubUrl(request);
+    githubUrl = await readRepositoryUrl(request);
   } catch (error) {
     if (error instanceof AppInputError) {
       return new Response(JSON.stringify({ error: error.message }), { status: 400 });

@@ -16,12 +16,13 @@
 ## 機能
 
 - GitHub OAuth ログイン
-- 公開／Privateアプリの登録（Privateでも概要・サムネイル・紹介動画・技術構成は公開し、サイト／GitHubリンクは所有者のログイン中のみ表示）
+- 公開／Privateアプリの登録（Privateでも概要・サムネイル・紹介動画・技術構成は公開し、サイト／リポジトリリンクは所有者のログイン中のみ表示）
 - 公開 GitHub リポジトリからの技術スタック検出（非公開リポジトリ対応は明示的な設定時のみ）
 - 目的別カテゴリーと公開状態によるライブラリ型ナビゲーション
 - リスト表示、横断検索、技術構成の展開表示
 - 技術の役割・説明・採用アプリを確認できる技術カタログ
 - アプリの CRUD (追加・編集・削除)
+- リポジトリURLは GitHub と Hugging Face (Spaces / Models / Datasets) に対応
 - GitHub URL から技術スタックを自動検出 (package.json, requirements.txt, go.mod, Cargo.toml, README.md, Dockerfile)
 - 登録・更新時に技術スタックの利用用途 (usage_role) を自動付与
 - サムネイル自動取得 (thum.io) または手動アップロード (R2)
@@ -231,6 +232,7 @@ src/
 │   ├── db.ts              # D1 ヘルパー
 │   ├── auth.ts            # JWT 認証
 │   ├── tech-detector.ts   # GitHub からの技術検出
+│   ├── repository.ts      # リポジトリURL(GitHub/Hugging Face)の検証・表示ラベル
 │   ├── video.ts           # YouTube URLの検証・埋め込みURL生成
 │   └── icons.ts           # Simple Icons マッピング
 ├── pages/
@@ -240,7 +242,7 @@ src/
 │   └── api/
 │       ├── apps.ts        # CRUD API (登録時 usage_role 自動検出)
 │       ├── tech.ts        # 技術一覧
-│       ├── detect-tech.ts # 技術自動検出
+│       ├── detect-tech.ts # 技術自動検出 (GitHub のみ)
 │       ├── upload.ts      # サムネイルアップロード → R2
 │       └── auth/          # GitHub OAuth
 └── styles/

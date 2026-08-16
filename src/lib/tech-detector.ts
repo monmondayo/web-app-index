@@ -1,3 +1,5 @@
+import { parseRepositoryUrl } from './repository';
+
 // Maps npm package names to tech stack names and roles
 const PACKAGE_MAP: Record<string, { name: string; role: string }> = {
   'react': { name: 'React', role: 'UIレンダリング' },
@@ -112,9 +114,9 @@ interface GitHubFile {
 type GitHubCredentials = { accessToken?: string; clientId?: string; clientSecret?: string };
 
 function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
-  const match = url.match(/github\.com\/([^/]+)\/([^/]+)/);
-  if (!match) return null;
-  return { owner: match[1], repo: match[2].replace(/\.git$/, '') };
+  const parsed = parseRepositoryUrl(url);
+  if (parsed?.host !== 'github') return null;
+  return { owner: parsed.owner, repo: parsed.repo };
 }
 
 function getAuthHeaders(githubCredentials?: GitHubCredentials): Record<string, string> {
