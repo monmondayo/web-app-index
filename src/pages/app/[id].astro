@@ -6,6 +6,7 @@ import { getAppById, getApps } from '../../lib/db';
 import { getCurrentUser } from '../../lib/auth';
 import { APP_CATEGORIES, APP_STATUSES, getTechRole, type AppCategory, type AppStatus } from '../../lib/catalog';
 import { TECH_DESCRIPTIONS, getTechIconSvg } from '../../lib/icons';
+import { getRepositoryLabel } from '../../lib/repository';
 import { getYouTubeEmbedUrl } from '../../lib/video';
 
 const user = await getCurrentUser(Astro.request, env.JWT_SECRET);
@@ -111,7 +112,7 @@ const emptyTechLabel = app.status === 'idea' ? '技術選定中です。' : '技
               <p class="mt-4 text-sm sm:text-base leading-7 text-slate-600">{app.description || '説明はまだ登録されていません。'}</p>
               <div class="mt-7 flex flex-wrap gap-3">
                 {app.site_url && <a href={app.site_url} target="_blank" rel="noopener noreferrer" class="primary-button">サイトを開く ↗</a>}
-                {app.github_url && <a href={app.github_url} target="_blank" rel="noopener noreferrer" class="secondary-button">GitHub ↗</a>}
+                {app.github_url && <a href={app.github_url} target="_blank" rel="noopener noreferrer" class="secondary-button">{getRepositoryLabel(app.github_url)} ↗</a>}
               </div>
               {app.is_locked && (
                 <div class="private-access-note">

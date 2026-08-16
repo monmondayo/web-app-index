@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import TechSelector from './TechSelector';
 import { APP_CATEGORIES, APP_STATUSES, type AppCategory, type AppStatus } from '../lib/catalog';
+import { REPOSITORY_HOST_LABELS, isGitHubRepositoryUrl, isRepositoryUrl } from '../lib/repository';
 import { normalizeYouTubeUrl } from '../lib/video';
 
 interface TechStack {
@@ -99,7 +100,7 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
   }
 
   async function handleDetectTech() {
-    if (!githubUrl) return;
+    if (!isGitHubRepositoryUrl(githubUrl)) return;
     setDetecting(true);
     try {
       const res = await fetch('/api/detect-tech', {
@@ -188,6 +189,10 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
     e.preventDefault();
     if (!title.trim()) {
       setError('タイトルを入力してください');
+      return;
+    }
+    if (githubUrl.trim() && !isRepositoryUrl(githubUrl)) {
+      setError(`リポジトリURLには ${REPOSITORY_HOST_LABELS} のURLを入力してください`);
       return;
     }
     if (videoUrl.trim() && !normalizeYouTubeUrl(videoUrl)) {
@@ -320,24 +325,28 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">GitHub URL</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">リポジトリURL（{REPOSITORY_HOST_LABELS}）</label>
             <div class="flex gap-2">
               <input
                 type="url"
                 value={githubUrl}
                 onInput={(e) => setGithubUrl((e.target as HTMLInputElement).value)}
                 class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                placeholder="https://github.com/user/repo"
+                placeholder="https://github.com/user/repo または https://huggingface.co/spaces/user/space"
               />
               <button
                 type="button"
                 onClick={handleDetectTech}
-                disabled={!githubUrl || detecting}
+                title={githubUrl && !isGitHubRepositoryUrl(githubUrl) ? '技術検出は GitHub リポジトリのみ対応しています' : undefined}
+                disabled={!isGitHubRepositoryUrl(githubUrl) || detecting}
                 class="px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
               >
                 {detecting ? '検出中...' : '技術検出'}
               </button>
             </div>
+            <p class="mt-2 text-xs leading-5 text-gray-500">
+              GitHub のほか Hugging Face（Spaces / Models / Datasets）のURLも登録できます。技術検出は GitHub リポジトリのみ対応しています。
+            </p>
           </div>
 
           <div>
@@ -363,7 +372,7 @@ export default function AddAppDialog({ isOpen, onClose, onSaved, editApp }: Prop
             />
             <span>
               <span class="block text-sm font-medium text-gray-800">Privateアプリとして登録</span>
-              <span class="mt-0.5 block text-xs text-gray-500">概要・サムネイル・紹介動画・技術構成は公開し、サイトURLとGitHub URLはログイン中の自分だけに表示します。GitHub が private の場合は自動で有効になります。</span>
+              <span class="mt-0.5 block text-xs text-gray-500">概要・サムネイル・紹介動画・技術構成は公開し、サイトURLとリポジトリURLはログイン中の自分だけに表示します。GitHub が private の場合は自動で有効になります。</span>
             </span>
           </label>
 

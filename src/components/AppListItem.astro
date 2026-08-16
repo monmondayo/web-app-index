@@ -2,6 +2,7 @@
 import type { AppWithTech } from '../lib/db';
 import { APP_CATEGORIES, APP_STATUSES, getTechRole } from '../lib/catalog';
 import { TECH_DESCRIPTIONS, getTechIconSvg } from '../lib/icons';
+import { getRepositoryLabel } from '../lib/repository';
 
 interface Props { app: AppWithTech; admin?: boolean; }
 const { app, admin = false } = Astro.props;
@@ -81,7 +82,7 @@ const editData = admin ? JSON.stringify({
     <div class="app-row-actions">
       <a href={`/app/${app.id}`} aria-label={`${app.title}の詳細を見る`}>詳細 →</a>
       {app.site_url && <a href={app.site_url} target="_blank" rel="noopener noreferrer" aria-label={`${app.title}を開く`}>サイト ↗</a>}
-      {app.github_url && <a href={app.github_url} target="_blank" rel="noopener noreferrer" aria-label={`${app.title}のリポジトリを開く`}>GitHub ↗</a>}
+      {app.github_url && <a href={app.github_url} target="_blank" rel="noopener noreferrer" aria-label={`${app.title}のリポジトリを開く`}>{getRepositoryLabel(app.github_url)} ↗</a>}
       <button type="button" class="app-chevron app-expand-btn" aria-expanded="false" aria-controls={`app-details-${app.id}`} aria-label="技術構成を表示">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18 6-6-6-6" /></svg>
       </button>

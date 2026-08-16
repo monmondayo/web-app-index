@@ -1,4 +1,5 @@
 import { isAppCategory, isAppStatus, type AppCategory, type AppStatus } from './catalog';
+import { REPOSITORY_HOST_LABELS, isRepositoryUrl } from './repository';
 import { normalizeYouTubeUrl } from './video';
 
 const MAX_JSON_BYTES = 64 * 1024;
@@ -61,13 +62,11 @@ function videoUrl(value: unknown): string | undefined {
   return normalized;
 }
 
-function githubUrl(value: unknown): string | undefined {
+function repositoryUrl(value: unknown): string | undefined {
   const parsed = webUrl(value, 'github_url');
   if (!parsed) return undefined;
-  const url = new URL(parsed);
-  const segments = url.pathname.split('/').filter(Boolean);
-  if (url.hostname.toLowerCase() !== 'github.com' || segments.length < 2) {
-    throw new AppInputError('github_url must point to a GitHub repository');
+  if (!isRepositoryUrl(parsed)) {
+    throw new AppInputError(`リポジトリURLには ${REPOSITORY_HOST_LABELS} のURLを入力してください`);
   }
   return parsed;
 }
@@ -147,7 +146,7 @@ export async function readAppInput(request: Request, requireId = false): Promise
     title,
     description: optionalString(value.description, 'description', 2_000),
     site_url: webUrl(value.site_url, 'site_url'),
-    github_url: githubUrl(value.github_url),
+    github_url: repositoryUrl(value.github_url),
     video_url: videoUrl(value.video_url),
     thumbnail_url: thumbnailUrl,
     thumbnail_type: thumbnailType,
@@ -159,9 +158,9 @@ export async function readAppInput(request: Request, requireId = false): Promise
   };
 }
 
-export async function readGithubUrl(request: Request): Promise<string> {
+export async function readRepositoryUrl(request: Request): Promise<string> {
   const value = await readJsonObject(request);
-  const parsed = githubUrl(value.github_url);
+  const parsed = repositoryUrl(value.github_url);
   if (!parsed) throw new AppInputError('github_url is required');
   return parsed;
 }
